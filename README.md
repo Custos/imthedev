@@ -77,6 +77,61 @@ The project follows a clean, layered architecture:
 - **Infrastructure Layer**: File system, database, and AI provider integrations
 - **Presentation Layer**: Terminal UI (with future support for web and IDE)
 
+### Core Services
+
+The core layer implements three essential services that power imthedev's functionality:
+
+#### CommandEngine
+
+The `CommandEngineImpl` manages the complete lifecycle of commands from proposal through execution:
+
+- **Command Proposal**: Creates new commands with AI-generated suggestions and reasoning
+- **Approval Workflow**: Supports manual approval/rejection of proposed commands
+- **Asynchronous Execution**: Executes approved commands using subprocess with real-time output capture
+- **Autopilot Mode**: Bypasses approval for trusted workflows when enabled
+- **Event-Driven Updates**: Publishes events for each state transition (proposed, approved, rejected, executing, completed, failed)
+- **Cancellation Support**: Allows cancellation of long-running commands
+
+The engine ensures safe command execution with comprehensive error handling and maintains a queue of pending commands awaiting user approval.
+
+#### StateManager
+
+The `StateManagerImpl` provides centralized application state management with persistence:
+
+- **Global State Management**: Maintains current project, autopilot mode, selected AI model, and UI preferences
+- **State Persistence**: Automatically saves state to JSON files with atomic write operations
+- **Event Notifications**: Publishes state change events through the event bus
+- **Subscription System**: Supports state change subscriptions with weak references to prevent memory leaks
+- **Type-Safe Updates**: Validates all state updates with comprehensive error checking
+- **Concurrent Update Handling**: Safely manages concurrent state modifications
+
+The state manager ensures consistent application behavior across sessions and provides a single source of truth for application configuration.
+
+#### AIOrchestrator
+
+The `AIOrchestratorImpl` orchestrates AI interactions using the Adapter Pattern for multi-model support:
+
+- **Multi-Model Support**: Integrates with multiple AI providers through a unified interface
+  - Claude (Anthropic): Supports both Opus and Sonnet models
+  - OpenAI: Supports GPT-4 and GPT-3.5 Turbo
+  - Extensible design for adding new providers
+- **Command Generation**: Creates contextually-aware commands based on project history and objectives
+- **Result Analysis**: Analyzes command execution results and suggests next actions
+- **Token Estimation**: Provides cost estimation for AI operations
+- **Adapter Pattern**: Clean abstraction allows easy addition of new AI providers
+- **Mock Support**: Includes mock adapter for testing without API dependencies
+
+Each adapter handles provider-specific communication while maintaining a consistent interface for the application.
+
+### Event-Driven Architecture
+
+All core services communicate through a central event bus, ensuring loose coupling and enabling:
+
+- Real-time UI updates without direct dependencies
+- Audit trail of all system operations
+- Extension points for future features
+- Testability through event verification
+
 See `00_WORKFLOW_PLAN.md` for detailed implementation documentation.
 
 ## License
