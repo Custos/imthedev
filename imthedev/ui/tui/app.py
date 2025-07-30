@@ -5,6 +5,8 @@ all TUI components and manages the overall application lifecycle.
 Compatible with Textual v5.0.1.
 """
 
+from typing import Optional
+
 from textual.app import App, ComposeResult
 from textual.containers import Container, Horizontal, Vertical
 from textual.widgets import Footer, Header
@@ -35,9 +37,19 @@ class ImTheDevApp(App):
         ("p", "toggle_autopilot", "Toggle Autopilot"),
         ("a", "approve_command", "Approve"),
         ("d", "deny_command", "Deny"),
+        ("tab", "focus_next", "Next"),
+        ("shift+tab", "focus_previous", "Previous"),
+        ("ctrl+p", "focus_projects", "Focus Projects"),
+        ("ctrl+c", "focus_commands", "Focus Commands"),
     ]
     
     TITLE = "imthedev - SuperClaude Workflow Manager"
+    
+    def __init__(self) -> None:
+        """Initialize the application."""
+        super().__init__()
+        self.autopilot_enabled = False
+        self.current_focus_widget: Optional[str] = None
     
     def compose(self) -> ComposeResult:
         """Compose the application layout.
@@ -79,18 +91,60 @@ class ImTheDevApp(App):
     
     def action_toggle_autopilot(self) -> None:
         """Toggle autopilot mode on/off."""
-        # TODO: Implement autopilot toggle logic
-        pass
+        self.autopilot_enabled = not self.autopilot_enabled
+        
+        # Update status bar to reflect autopilot state
+        status_bar = self.query_one("#status-bar", StatusBar)
+        if hasattr(status_bar, 'autopilot_enabled'):
+            status_bar.autopilot_enabled = self.autopilot_enabled
+        
+        # Log the state change for debugging
+        self.log(f"Autopilot mode: {'enabled' if self.autopilot_enabled else 'disabled'}")
     
     def action_approve_command(self) -> None:
         """Approve the current command."""
-        # TODO: Implement command approval logic
-        pass
+        # Get the approval controls widget
+        approval_controls = self.query_one("#approval-controls", ApprovalControls)
+        
+        # Notify that approval was triggered
+        self.log("Command approved")
+        
+        # In a real implementation, this would:
+        # 1. Get the current pending command from CommandDashboard
+        # 2. Send approval to the CommandEngine
+        # 3. Update UI to reflect approval
     
     def action_deny_command(self) -> None:
         """Deny the current command."""
-        # TODO: Implement command denial logic
-        pass
+        # Get the approval controls widget
+        approval_controls = self.query_one("#approval-controls", ApprovalControls)
+        
+        # Notify that denial was triggered
+        self.log("Command denied")
+        
+        # In a real implementation, this would:
+        # 1. Get the current pending command from CommandDashboard
+        # 2. Send denial to the CommandEngine
+        # 3. Update UI to reflect denial
+    
+    def action_focus_projects(self) -> None:
+        """Focus on the project selector widget."""
+        project_selector = self.query_one("#project-selector", ProjectSelector)
+        project_selector.focus()
+        self.current_focus_widget = "project-selector"
+        self.log("Focused on project selector")
+    
+    def action_focus_commands(self) -> None:
+        """Focus on the command dashboard widget."""
+        command_dashboard = self.query_one("#command-dashboard", CommandDashboard)
+        command_dashboard.focus()
+        self.current_focus_widget = "command-dashboard"
+        self.log("Focused on command dashboard")
+    
+    def on_mount(self) -> None:
+        """Called when the app is mounted."""
+        # Set initial focus to project selector
+        self.action_focus_projects()
 
 
 # Optional: Default CSS for basic layout
@@ -112,20 +166,43 @@ DEFAULT_CSS = """
     width: 1fr;
 }
 
+#project-selector {
+    height: 1fr;
+    margin: 1;
+    border: solid $primary-background;
+}
+
+#project-selector:focus {
+    border: solid $primary;
+}
+
 #command-dashboard {
     height: 1fr;
-    border: solid $primary;
+    border: solid $primary-background;
     margin: 1;
+}
+
+#command-dashboard:focus {
+    border: solid $primary;
 }
 
 #approval-controls {
     height: 5;
-    border: solid $primary;
+    border: solid $primary-background;
     margin: 1;
+}
+
+#approval-controls:focus {
+    border: solid $primary;
 }
 
 #status-bar {
     height: 3;
     dock: bottom;
+}
+
+/* Highlight focused widgets */
+Widget:focus {
+    background: $boost;
 }
 """
