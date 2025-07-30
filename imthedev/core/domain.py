@@ -21,6 +21,7 @@ class CommandStatus(Enum):
     EXECUTING = "executing"
     COMPLETED = "completed"
     FAILED = "failed"
+    CANCELLED = "cancelled"
 
 
 @dataclass
