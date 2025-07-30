@@ -3,9 +3,12 @@
 This module contains tests for the main TUI application class.
 """
 
+from unittest.mock import AsyncMock, Mock
+
 import pytest
 
-from imthedev.ui.tui import ImTheDevApp
+from imthedev.core import Event
+from imthedev.ui.tui import CoreFacade, ImTheDevApp
 
 
 class TestImTheDevApp:
@@ -124,3 +127,68 @@ class TestImTheDevApp:
         app = ImTheDevApp()
         assert hasattr(app, 'on_mount')
         assert callable(app.on_mount)
+    
+    def test_app_with_facade(self) -> None:
+        """Test app initialization with CoreFacade."""
+        # Create mock facade
+        mock_facade = Mock(spec=CoreFacade)
+        
+        # Create app with facade
+        app = ImTheDevApp(core_facade=mock_facade)
+        
+        # Verify facade is set
+        assert app.core_facade == mock_facade
+        
+        # Verify event handlers were registered
+        assert mock_facade.on_ui_event.called
+    
+    def test_app_event_handlers(self) -> None:
+        """Test that app has all required event handlers."""
+        app = ImTheDevApp()
+        
+        # Command event handlers
+        assert hasattr(app, '_on_command_proposed')
+        assert hasattr(app, '_on_command_approved')
+        assert hasattr(app, '_on_command_rejected')
+        assert hasattr(app, '_on_command_executing')
+        assert hasattr(app, '_on_command_completed')
+        assert hasattr(app, '_on_command_failed')
+        
+        # Project event handlers
+        assert hasattr(app, '_on_project_created')
+        assert hasattr(app, '_on_project_selected')
+        
+        # State event handlers
+        assert hasattr(app, '_on_autopilot_enabled')
+        assert hasattr(app, '_on_autopilot_disabled')
+    
+    def test_event_handler_updates_ui(self) -> None:
+        """Test that event handlers update UI components."""
+        app = ImTheDevApp()
+        
+        # Test autopilot enabled event
+        event = Event(type="ui.autopilot.enabled", payload={})
+        app._on_autopilot_enabled(event)
+        assert app.autopilot_enabled is True
+        
+        # Test autopilot disabled event
+        event = Event(type="ui.autopilot.disabled", payload={})
+        app._on_autopilot_disabled(event)
+        assert app.autopilot_enabled is False
+    
+    @pytest.mark.asyncio
+    async def test_toggle_autopilot_with_facade(self) -> None:
+        """Test autopilot toggle with facade integration."""
+        # Create mock facade
+        mock_facade = Mock(spec=CoreFacade)
+        mock_facade.toggle_autopilot = AsyncMock(return_value=True)
+        
+        # Create app with facade
+        app = ImTheDevApp(core_facade=mock_facade)
+        
+        # Test async toggle
+        await app._toggle_autopilot_async()
+        
+        # Verify facade was called
+        mock_facade.toggle_autopilot.assert_called_once()
+        assert app.autopilot_enabled is True

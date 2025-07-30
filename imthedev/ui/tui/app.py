@@ -11,12 +11,14 @@ from textual.app import App, ComposeResult
 from textual.containers import Container, Horizontal, Vertical
 from textual.widgets import Footer, Header
 
+from imthedev.core import Event
 from imthedev.ui.tui.components import (
     ApprovalControls,
     CommandDashboard,
     ProjectSelector,
     StatusBar,
 )
+from imthedev.ui.tui.facade import CoreFacade
 
 
 class ImTheDevApp(App):
@@ -45,11 +47,20 @@ class ImTheDevApp(App):
     
     TITLE = "imthedev - SuperClaude Workflow Manager"
     
-    def __init__(self) -> None:
-        """Initialize the application."""
+    def __init__(self, core_facade: Optional[CoreFacade] = None) -> None:
+        """Initialize the application.
+        
+        Args:
+            core_facade: Optional facade for core services integration
+        """
         super().__init__()
         self.autopilot_enabled = False
         self.current_focus_widget: Optional[str] = None
+        self.core_facade = core_facade
+        
+        # Register for UI events if facade is provided
+        if self.core_facade:
+            self._register_ui_event_handlers()
     
     def compose(self) -> ComposeResult:
         """Compose the application layout.
@@ -91,41 +102,52 @@ class ImTheDevApp(App):
     
     def action_toggle_autopilot(self) -> None:
         """Toggle autopilot mode on/off."""
-        self.autopilot_enabled = not self.autopilot_enabled
-        
-        # Update status bar to reflect autopilot state
-        status_bar = self.query_one("#status-bar", StatusBar)
-        if hasattr(status_bar, 'autopilot_enabled'):
-            status_bar.autopilot_enabled = self.autopilot_enabled
-        
-        # Log the state change for debugging
-        self.log(f"Autopilot mode: {'enabled' if self.autopilot_enabled else 'disabled'}")
+        if self.core_facade:
+            # Use facade to toggle autopilot
+            self.run_worker(self._toggle_autopilot_async())
+        else:
+            # Fallback to local toggle
+            self.autopilot_enabled = not self.autopilot_enabled
+            
+            # Update status bar to reflect autopilot state
+            status_bar = self.query_one("#status-bar", StatusBar)
+            if hasattr(status_bar, 'autopilot_enabled'):
+                status_bar.autopilot_enabled = self.autopilot_enabled
+            
+            # Log the state change for debugging
+            self.log(f"Autopilot mode: {'enabled' if self.autopilot_enabled else 'disabled'}")
+    
+    async def _toggle_autopilot_async(self) -> None:
+        """Toggle autopilot asynchronously through facade."""
+        new_state = await self.core_facade.toggle_autopilot()
+        self.autopilot_enabled = new_state
+        self.log(f"Autopilot mode: {'enabled' if new_state else 'disabled'}")
     
     def action_approve_command(self) -> None:
         """Approve the current command."""
-        # Get the approval controls widget
-        approval_controls = self.query_one("#approval-controls", ApprovalControls)
-        
-        # Notify that approval was triggered
-        self.log("Command approved")
-        
-        # In a real implementation, this would:
-        # 1. Get the current pending command from CommandDashboard
-        # 2. Send approval to the CommandEngine
-        # 3. Update UI to reflect approval
+        if self.core_facade:
+            # Get the current pending command and approve it
+            # In a real implementation, we'd get the command ID from the UI
+            self.log("Command approval requested - facade integration pending")
+        else:
+            # Get the approval controls widget
+            approval_controls = self.query_one("#approval-controls", ApprovalControls)
+            
+            # Notify that approval was triggered
+            self.log("Command approved")
     
     def action_deny_command(self) -> None:
         """Deny the current command."""
-        # Get the approval controls widget
-        approval_controls = self.query_one("#approval-controls", ApprovalControls)
-        
-        # Notify that denial was triggered
-        self.log("Command denied")
-        
-        # In a real implementation, this would:
-        # 1. Get the current pending command from CommandDashboard
-        # 2. Send denial to the CommandEngine
-        # 3. Update UI to reflect denial
+        if self.core_facade:
+            # Get the current pending command and deny it
+            # In a real implementation, we'd get the command ID from the UI
+            self.log("Command denial requested - facade integration pending")
+        else:
+            # Get the approval controls widget
+            approval_controls = self.query_one("#approval-controls", ApprovalControls)
+            
+            # Notify that denial was triggered
+            self.log("Command denied")
     
     def action_focus_projects(self) -> None:
         """Focus on the project selector widget."""
@@ -145,6 +167,114 @@ class ImTheDevApp(App):
         """Called when the app is mounted."""
         # Set initial focus to project selector
         self.action_focus_projects()
+        
+        # Initialize core facade if available
+        if self.core_facade:
+            self.run_worker(self._initialize_facade())
+    
+    async def _initialize_facade(self) -> None:
+        """Initialize the core facade asynchronously."""
+        await self.core_facade.initialize()
+        
+        # Load initial data
+        await self._load_projects()
+        await self._update_ui_state()
+    
+    async def _load_projects(self) -> None:
+        """Load projects from core and update UI."""
+        if not self.core_facade:
+            return
+            
+        projects = await self.core_facade.get_projects()
+        project_selector = self.query_one("#project-selector", ProjectSelector)
+        
+        # Update project selector with projects
+        # This would normally call a method on ProjectSelector to update its list
+        # For now, we'll just log
+        self.log(f"Loaded {len(projects)} projects")
+    
+    async def _update_ui_state(self) -> None:
+        """Update UI state from core state."""
+        if not self.core_facade:
+            return
+            
+        # Update autopilot status
+        self.autopilot_enabled = await self.core_facade.get_autopilot_status()
+        
+        # Update status bar
+        status_bar = self.query_one("#status-bar", StatusBar)
+        if hasattr(status_bar, 'autopilot_enabled'):
+            status_bar.autopilot_enabled = self.autopilot_enabled
+    
+    def _register_ui_event_handlers(self) -> None:
+        """Register handlers for UI events from core."""
+        # Command events
+        self.core_facade.on_ui_event("ui.command.proposed", self._on_command_proposed)
+        self.core_facade.on_ui_event("ui.command.approved", self._on_command_approved)
+        self.core_facade.on_ui_event("ui.command.rejected", self._on_command_rejected)
+        self.core_facade.on_ui_event("ui.command.executing", self._on_command_executing)
+        self.core_facade.on_ui_event("ui.command.completed", self._on_command_completed)
+        self.core_facade.on_ui_event("ui.command.failed", self._on_command_failed)
+        
+        # Project events
+        self.core_facade.on_ui_event("ui.project.created", self._on_project_created)
+        self.core_facade.on_ui_event("ui.project.selected", self._on_project_selected)
+        
+        # State events
+        self.core_facade.on_ui_event("ui.autopilot.enabled", self._on_autopilot_enabled)
+        self.core_facade.on_ui_event("ui.autopilot.disabled", self._on_autopilot_disabled)
+    
+    # UI Event Handlers
+    
+    def _on_command_proposed(self, event: Event) -> None:
+        """Handle command proposed event."""
+        command_dashboard = self.query_one("#command-dashboard", CommandDashboard)
+        # Update dashboard with proposed command
+        self.log(f"Command proposed: {event.payload.get('command_text', '')}")
+    
+    def _on_command_approved(self, event: Event) -> None:
+        """Handle command approved event."""
+        self.log(f"Command approved: {event.payload.get('command_id', '')}")
+    
+    def _on_command_rejected(self, event: Event) -> None:
+        """Handle command rejected event."""
+        self.log(f"Command rejected: {event.payload.get('command_id', '')}")
+    
+    def _on_command_executing(self, event: Event) -> None:
+        """Handle command executing event."""
+        self.log(f"Command executing: {event.payload.get('command_id', '')}")
+    
+    def _on_command_completed(self, event: Event) -> None:
+        """Handle command completed event."""
+        self.log(f"Command completed: {event.payload.get('command_id', '')}")
+    
+    def _on_command_failed(self, event: Event) -> None:
+        """Handle command failed event."""
+        self.log(f"Command failed: {event.payload.get('command_id', '')}")
+    
+    def _on_project_created(self, event: Event) -> None:
+        """Handle project created event."""
+        self.log(f"Project created: {event.payload.get('name', '')}")
+        # Reload projects
+        self.run_worker(self._load_projects())
+    
+    def _on_project_selected(self, event: Event) -> None:
+        """Handle project selected event."""
+        self.log(f"Project selected: {event.payload.get('project_id', '')}")
+    
+    def _on_autopilot_enabled(self, event: Event) -> None:
+        """Handle autopilot enabled event."""
+        self.autopilot_enabled = True
+        status_bar = self.query_one("#status-bar", StatusBar)
+        if hasattr(status_bar, 'autopilot_enabled'):
+            status_bar.autopilot_enabled = True
+    
+    def _on_autopilot_disabled(self, event: Event) -> None:
+        """Handle autopilot disabled event."""
+        self.autopilot_enabled = False
+        status_bar = self.query_one("#status-bar", StatusBar)
+        if hasattr(status_bar, 'autopilot_enabled'):
+            status_bar.autopilot_enabled = False
 
 
 # Optional: Default CSS for basic layout
