@@ -35,10 +35,10 @@ class DatabaseConfig:
 class StorageConfig:
     """Storage configuration settings."""
     
-    context_dir: str = "~/.imthedev/contexts"
+    context_dir: str = field(default_factory=lambda: str(Path.home() / ".imthedev" / "contexts"))
     """Directory for storing project context files"""
     
-    backup_dir: str = "~/.imthedev/backups"
+    backup_dir: str = field(default_factory=lambda: str(Path.home() / ".imthedev" / "backups"))
     """Directory for storing backups"""
     
     max_context_history: int = 100
@@ -126,7 +126,7 @@ class LoggingConfig:
     format: str = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
     """Log message format string"""
     
-    file_path: Optional[str] = "~/.imthedev/logs/imthedev.log"
+    file_path: Optional[str] = field(default_factory=lambda: str(Path.home() / ".imthedev" / "logs" / "imthedev.log"))
     """Path to log file (None to disable file logging)"""
     
     max_file_size: int = 10 * 1024 * 1024  # 10MB
@@ -169,7 +169,7 @@ class AppConfig:
     debug: bool = False
     """Enable debug mode"""
     
-    config_file: str = "~/.imthedev/config.toml"
+    config_file: str = field(default_factory=lambda: str(Path.home() / ".imthedev" / "config.toml"))
     """Path to configuration file"""
     
     def expand_paths(self) -> None:
@@ -263,7 +263,7 @@ class ConfigManager:
         
         # Determine config file path
         config_file_path = self._config_file or config.config_file
-        config_file_path = os.path.expanduser(config_file_path)
+        config_file_path = str(Path(config_file_path).expanduser())
         
         # Load from TOML file if it exists
         if os.path.exists(config_file_path):
@@ -467,6 +467,25 @@ class ConfigManager:
 # Settings can be overridden by environment variables using the pattern:
 # IMTHEDEV_<SECTION>_<SETTING> (e.g., IMTHEDEV_AI_CLAUDE_API_KEY)
 
+# ============================================================================
+# IMPORTANT: API KEY CONFIGURATION REQUIRED!
+# ============================================================================
+# You MUST configure at least one AI API key to use imthedev.
+# 
+# Choose one of these methods:
+#
+# Option 1: Environment Variables (Recommended)
+#   export CLAUDE_API_KEY='your-claude-api-key-here'
+#   export OPENAI_API_KEY='your-openai-api-key-here'
+#
+# Option 2: Configuration File
+#   Uncomment and set the API keys below in the [ai] section
+#
+# To get API keys:
+#   - Claude: https://console.anthropic.com/
+#   - OpenAI: https://platform.openai.com/api-keys
+# ============================================================================
+
 # Global settings
 debug = false
 
@@ -486,9 +505,17 @@ compress_backups = true
 
 [ai]
 # AI provider configuration
-default_model = "claude"
-# claude_api_key = "your-claude-api-key-here"  # Recommended to use CLAUDE_API_KEY env var
-# openai_api_key = "your-openai-api-key-here"  # Recommended to use OPENAI_API_KEY env var
+# REQUIRED: At least one API key must be configured!
+default_model = "claude"  # Options: claude, claude-instant, gpt-4, gpt-3.5-turbo
+
+# Uncomment ONE OR BOTH of the following lines and add your API key:
+# claude_api_key = "sk-ant-..."  # Get from https://console.anthropic.com/
+# openai_api_key = "sk-..."      # Get from https://platform.openai.com/api-keys
+
+# Note: Using environment variables is more secure than storing keys in this file:
+#   export CLAUDE_API_KEY='your-key-here'
+#   export OPENAI_API_KEY='your-key-here'
+
 request_timeout = 30
 max_retries = 3
 retry_delay = 1.0

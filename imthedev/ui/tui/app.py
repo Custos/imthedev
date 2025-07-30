@@ -39,6 +39,7 @@ class ImTheDevApp(App):
         ("p", "toggle_autopilot", "Toggle Autopilot"),
         ("a", "approve_command", "Approve"),
         ("d", "deny_command", "Deny"),
+        ("n", "create_project", "New Project"),
         ("tab", "focus_next", "Next"),
         ("shift+tab", "focus_previous", "Previous"),
         ("ctrl+p", "focus_projects", "Focus Projects"),
@@ -123,6 +124,36 @@ class ImTheDevApp(App):
         self.autopilot_enabled = new_state
         self.log(f"Autopilot mode: {'enabled' if new_state else 'disabled'}")
     
+    async def _create_project_async(self) -> None:
+        """Create a new demo project asynchronously."""
+        import datetime
+        from pathlib import Path
+        
+        # Generate a unique project name with timestamp
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        project_name = f"Demo Project {timestamp}"
+        project_path = Path.home() / "imthedev_projects" / f"demo_{timestamp}"
+        
+        try:
+            # Create the project using the core facade
+            project = await self.core_facade.create_project(
+                name=project_name,
+                path=str(project_path)
+            )
+            
+            self.log(f"Created project: {project.name} at {project.path}")
+            
+            # Refresh the project list to show the new project
+            await self._load_projects()
+            
+            # Select the newly created project
+            project_selector = self.query_one("#project-selector", ProjectSelector)
+            if hasattr(project_selector, 'select_project'):
+                project_selector.select_project(str(project.id))
+            
+        except Exception as e:
+            self.log(f"Failed to create project: {str(e)}")
+    
     def action_approve_command(self) -> None:
         """Approve the current command."""
         if self.core_facade:
@@ -163,6 +194,13 @@ class ImTheDevApp(App):
         self.current_focus_widget = "command-dashboard"
         self.log("Focused on command dashboard")
     
+    def action_create_project(self) -> None:
+        """Create a new demo project."""
+        if self.core_facade:
+            self.run_worker(self._create_project_async())
+        else:
+            self.log("Cannot create project without core facade")
+    
     def on_mount(self) -> None:
         """Called when the app is mounted."""
         # Set initial focus to project selector
@@ -189,9 +227,7 @@ class ImTheDevApp(App):
         project_selector = self.query_one("#project-selector", ProjectSelector)
         
         # Update project selector with projects
-        # This would normally call a method on ProjectSelector to update its list
-        # For now, we'll just log
-        self.log(f"Loaded {len(projects)} projects")
+        project_selector.update_projects(projects)
     
     async def _update_ui_state(self) -> None:
         """Update UI state from core state."""

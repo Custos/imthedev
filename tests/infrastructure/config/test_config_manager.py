@@ -32,7 +32,9 @@ class TestAppConfig:
         
         # Test default values
         assert config.debug is False
-        assert config.config_file == "~/.imthedev/config.toml"
+        # Config file should use Path.home() now
+        expected_config_file = str(Path.home() / ".imthedev" / "config.toml")
+        assert config.config_file == expected_config_file
         
         # Test nested configurations have defaults
         assert isinstance(config.database, DatabaseConfig)
@@ -47,12 +49,21 @@ class TestAppConfig:
         assert config.ai.default_model == "claude"
         assert config.ui.theme == "dark"
         assert config.logging.level == "INFO"
+        
+        # Test paths use Path.home() instead of ~
+        expected_context_dir = str(Path.home() / ".imthedev" / "contexts")
+        expected_backup_dir = str(Path.home() / ".imthedev" / "backups")
+        expected_log_path = str(Path.home() / ".imthedev" / "logs" / "imthedev.log")
+        
+        assert config.storage.context_dir == expected_context_dir
+        assert config.storage.backup_dir == expected_backup_dir
+        assert config.logging.file_path == expected_log_path
     
     def test_expand_paths(self):
         """Test path expansion functionality."""
         config = AppConfig()
         
-        # Set paths with ~ to test expansion
+        # Set paths with ~ to test expansion (simulating paths from TOML/env)
         config.database.path = "~/test/db.sqlite"
         config.storage.context_dir = "~/test/contexts"
         config.storage.backup_dir = "~/test/backups"
@@ -62,13 +73,13 @@ class TestAppConfig:
         # Expand paths
         config.expand_paths()
         
-        # Verify paths are expanded
-        home_dir = os.path.expanduser("~")
-        assert config.database.path == f"{home_dir}/test/db.sqlite"
-        assert config.storage.context_dir == f"{home_dir}/test/contexts"
-        assert config.storage.backup_dir == f"{home_dir}/test/backups"
-        assert config.logging.file_path == f"{home_dir}/test/logs/app.log"
-        assert config.config_file == f"{home_dir}/test/config.toml"
+        # Verify paths are expanded using Path.expanduser()
+        home_dir = str(Path.home())
+        assert config.database.path == str(Path.home() / "test" / "db.sqlite")
+        assert config.storage.context_dir == str(Path.home() / "test" / "contexts")
+        assert config.storage.backup_dir == str(Path.home() / "test" / "backups")
+        assert config.logging.file_path == str(Path.home() / "test" / "logs" / "app.log")
+        assert config.config_file == str(Path.home() / "test" / "config.toml")
     
     def test_validation_success(self):
         """Test successful configuration validation."""
@@ -154,6 +165,10 @@ debug = true
 path = "/custom/db.sqlite"
 timeout = 60
 
+[storage]
+context_dir = "~/custom/contexts"
+backup_dir = "~/custom/backups"
+
 [ai]
 default_model = "gpt-4"
 request_timeout = 45
@@ -164,6 +179,7 @@ autopilot_enabled = true
 
 [logging]
 level = "DEBUG"
+file_path = "~/custom/logs/app.log"
 '''
         
         with tempfile.NamedTemporaryFile(mode='w', suffix='.toml', delete=False) as f:
@@ -185,6 +201,15 @@ level = "DEBUG"
                 assert config.ui.theme == "light"
                 assert config.ui.autopilot_enabled is True
                 assert config.logging.level == "DEBUG"
+                
+                # Test that paths with ~ are properly expanded
+                expected_context_dir = str(Path.home() / "custom" / "contexts")
+                expected_backup_dir = str(Path.home() / "custom" / "backups")
+                expected_log_path = str(Path.home() / "custom" / "logs" / "app.log")
+                
+                assert config.storage.context_dir == expected_context_dir
+                assert config.storage.backup_dir == expected_backup_dir
+                assert config.logging.file_path == expected_log_path
             
         finally:
             os.unlink(config_file)
@@ -360,6 +385,22 @@ default_model = "invalid-model"
             assert config_path.exists()
             assert config_path.parent.exists()
     
+    def test_path_robustness_with_path_home(self):
+        """Test that using Path.home() is more robust than '~'."""
+        config = AppConfig()
+        
+        # Verify defaults use absolute paths
+        assert Path(config.storage.context_dir).is_absolute()
+        assert Path(config.storage.backup_dir).is_absolute()
+        assert Path(config.logging.file_path).is_absolute()
+        assert Path(config.config_file).is_absolute()
+        
+        # Verify paths don't contain '~'
+        assert '~' not in config.storage.context_dir
+        assert '~' not in config.storage.backup_dir
+        assert '~' not in config.logging.file_path
+        assert '~' not in config.config_file
+    
     def test_toml_and_env_precedence(self):
         """Test that environment variables take precedence over TOML file."""
         toml_content = '''
@@ -443,8 +484,12 @@ class TestConfigurationSections:
         """Test StorageConfig default values."""
         config = StorageConfig()
         
-        assert config.context_dir == "~/.imthedev/contexts"
-        assert config.backup_dir == "~/.imthedev/backups"
+        # Paths should now use Path.home() instead of ~
+        expected_context_dir = str(Path.home() / ".imthedev" / "contexts")
+        expected_backup_dir = str(Path.home() / ".imthedev" / "backups")
+        
+        assert config.context_dir == expected_context_dir
+        assert config.backup_dir == expected_backup_dir
         assert config.max_context_history == 100
         assert config.compress_backups is True
     
@@ -485,9 +530,12 @@ class TestConfigurationSections:
         """Test LoggingConfig default values."""
         config = LoggingConfig()
         
+        # Path should now use Path.home() instead of ~
+        expected_log_path = str(Path.home() / ".imthedev" / "logs" / "imthedev.log")
+        
         assert config.level == "INFO"
         assert "%(asctime)s" in config.format
-        assert config.file_path == "~/.imthedev/logs/imthedev.log"
+        assert config.file_path == expected_log_path
         assert config.max_file_size == 10 * 1024 * 1024  # 10MB
         assert config.backup_count == 5
         assert config.console_enabled is True

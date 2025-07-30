@@ -293,22 +293,82 @@ claude_api_key = "test-key"
     @pytest.mark.asyncio
     async def test_bootstrap_default_config(self):
         """Test bootstrap with default configuration file."""
-        with patch('imthedev.app.bootstrap.ConfigManager') as mock_config_manager:
-            mock_manager = MagicMock()
-            mock_config = AppConfig()
-            mock_config.ai.claude_api_key = "test-key"
-            mock_manager.load_config.return_value = mock_config
-            mock_config_manager.return_value = mock_manager
+        with patch('imthedev.app.bootstrap.Path') as mock_path:
+            # Mock that config file exists
+            mock_path_instance = MagicMock()
+            mock_path_instance.exists.return_value = True
+            mock_path.return_value = mock_path_instance
             
-            with patch('imthedev.app.bootstrap.ImTheDevApp') as mock_app_class:
-                mock_app = AsyncMock()
-                mock_app_class.return_value = mock_app
+            with patch('imthedev.app.bootstrap.ConfigManager') as mock_config_manager:
+                mock_manager = MagicMock()
+                mock_config = AppConfig()
+                mock_config.ai.claude_api_key = "test-key"
+                mock_manager.load_config.return_value = mock_config
+                mock_config_manager.return_value = mock_manager
                 
-                result = await bootstrap_application()
+                with patch('imthedev.app.bootstrap.ImTheDevApp') as mock_app_class:
+                    mock_app = AsyncMock()
+                    mock_app_class.return_value = mock_app
+                    
+                    result = await bootstrap_application()
+                    
+                    # Verify ConfigManager was called with None (default config)
+                    mock_config_manager.assert_called_once_with(None)
+                    assert result is mock_app
+    
+    @pytest.mark.asyncio
+    async def test_bootstrap_creates_config_if_missing(self):
+        """Test bootstrap creates default config file when missing."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            config_path = Path(temp_dir) / ".imthedev" / "config.toml"
+            
+            # Make sure the config doesn't exist
+            assert not config_path.exists()
+            
+            with patch('imthedev.app.bootstrap.ConfigManager') as mock_config_manager:
+                mock_manager = MagicMock()
+                mock_manager.create_default_config_file.return_value = str(config_path)
+                mock_config_manager.return_value = mock_manager
                 
-                # Verify ConfigManager was called with None (default config)
-                mock_config_manager.assert_called_once_with(None)
-                assert result is mock_app
+                with patch('sys.exit') as mock_exit:
+                    # Make sys.exit raise SystemExit to simulate real behavior
+                    mock_exit.side_effect = SystemExit
+                    
+                    with pytest.raises(SystemExit):
+                        await bootstrap_application(str(config_path))
+                    
+                    # Verify config file creation was attempted
+                    mock_manager.create_default_config_file.assert_called_once_with(str(config_path))
+                    
+                    # Verify graceful exit after creating config (should be first call)
+                    assert mock_exit.call_args_list[0] == ((0,), {})
+    
+    @pytest.mark.asyncio
+    async def test_bootstrap_api_key_error_message(self):
+        """Test bootstrap shows helpful error for missing API keys."""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.toml', delete=False) as f:
+            f.write('''
+[ai]
+# No API keys configured
+            ''')
+            config_file = f.name
+        
+        try:
+            with patch('sys.exit') as mock_exit:
+                with patch('builtins.print') as mock_print:
+                    await bootstrap_application(config_file)
+                    
+                    # Verify helpful error message was printed
+                    printed_messages = ' '.join(str(call[0][0]) for call in mock_print.call_args_list if call[0])
+                    assert "ERROR: No AI API key configured!" in printed_messages
+                    assert "CLAUDE_API_KEY" in printed_messages
+                    assert "OPENAI_API_KEY" in printed_messages
+                    assert "https://console.anthropic.com/" in printed_messages
+                    
+                    # Verify exit with error
+                    mock_exit.assert_called_once_with(1)
+        finally:
+            Path(config_file).unlink()
 
 
 class TestMain:

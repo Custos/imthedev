@@ -239,10 +239,11 @@ async def bootstrap_application(config_file: Optional[str] = None) -> ImTheDevAp
     """Bootstrap the imthedev application with all dependencies.
     
     This function handles the complete application initialization process:
-    1. Load and validate configuration
-    2. Set up logging
-    3. Create application instance
-    4. Initialize all services
+    1. Create default config file if needed
+    2. Load and validate configuration
+    3. Set up logging
+    4. Create application instance
+    5. Initialize all services
     
     Args:
         config_file: Optional path to configuration file
@@ -253,9 +254,35 @@ async def bootstrap_application(config_file: Optional[str] = None) -> ImTheDevAp
     Raises:
         SystemExit: If bootstrap fails critically
     """
+    # Determine config file path outside try block so it's available in exception handler
+    config_file_path = config_file or str(Path.home() / ".imthedev" / "config.toml")
+    config_file_path = str(Path(config_file_path).expanduser())
+    
     try:
-        # Load configuration
+        # Create config manager
         config_manager = ConfigManager(config_file)
+        
+        # Check if config file exists, create default if not
+        if not Path(config_file_path).exists():
+            print(f"Configuration file not found at {config_file_path}")
+            print("Creating default configuration file...")
+            created_path = config_manager.create_default_config_file(config_file_path)
+            print(f"\nCreated configuration file at: {created_path}")
+            print("\n" + "="*60)
+            print("IMPORTANT: You must configure at least one AI API key!")
+            print("="*60)
+            print("\nPlease edit the configuration file and add either:")
+            print("  - CLAUDE_API_KEY environment variable")
+            print("  - OPENAI_API_KEY environment variable")
+            print("  - Or uncomment and set the API key in the config file")
+            print("\nExample:")
+            print("  export CLAUDE_API_KEY='your-api-key-here'")
+            print(f"  OR edit {created_path} and set ai.claude_api_key")
+            print("\nThen run the application again.")
+            print("="*60 + "\n")
+            sys.exit(0)  # Exit gracefully after creating config
+        
+        # Load configuration
         config = config_manager.load_config()
         
         # Set up logging
@@ -274,10 +301,28 @@ async def bootstrap_application(config_file: Optional[str] = None) -> ImTheDevAp
         return app
         
     except Exception as e:
-        # Log to stderr since logging might not be set up
-        print(f"FATAL: Failed to bootstrap application: {e}", file=sys.stderr)
-        if logger.handlers:  # Only if logging is set up
-            logger.critical(f"Bootstrap failed: {e}", exc_info=True)
+        # Check if this is a missing API key error
+        error_msg = str(e)
+        if "At least one AI API key must be configured" in error_msg:
+            print("\n" + "="*60, file=sys.stderr)
+            print("ERROR: No AI API key configured!", file=sys.stderr)
+            print("="*60, file=sys.stderr)
+            print("\nThe application requires at least one AI API key to function.", file=sys.stderr)
+            print("\nPlease configure an API key using one of these methods:", file=sys.stderr)
+            print("\n1. Environment Variable (Recommended):", file=sys.stderr)
+            print("   export CLAUDE_API_KEY='your-api-key-here'", file=sys.stderr)
+            print("   export OPENAI_API_KEY='your-api-key-here'", file=sys.stderr)
+            print("\n2. Configuration File:", file=sys.stderr)
+            print(f"   Edit {config_file_path} and uncomment/set the API key", file=sys.stderr)
+            print("\nTo get API keys:", file=sys.stderr)
+            print("   - Claude: https://console.anthropic.com/", file=sys.stderr)
+            print("   - OpenAI: https://platform.openai.com/api-keys", file=sys.stderr)
+            print("="*60 + "\n", file=sys.stderr)
+        else:
+            # Log other errors normally
+            print(f"FATAL: Failed to bootstrap application: {e}", file=sys.stderr)
+            if logger.handlers:  # Only if logging is set up
+                logger.critical(f"Bootstrap failed: {e}", exc_info=True)
         sys.exit(1)
 
 
