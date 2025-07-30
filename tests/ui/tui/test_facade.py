@@ -25,6 +25,21 @@ from imthedev.core import (
     StateManager,
 )
 from imthedev.ui.tui import CoreFacade
+from datetime import datetime
+from pathlib import Path
+from imthedev.core import ProjectSettings
+
+
+def create_test_project(name: str = "Test Project", path: str = "/test") -> Project:
+    """Helper function to create a test project with all required fields."""
+    return Project(
+        id=uuid4(),
+        name=name,
+        path=Path(path),
+        created_at=datetime.now(),
+        context=ProjectContext(),
+        settings=ProjectSettings()
+    )
 
 
 @pytest.fixture
@@ -157,8 +172,8 @@ class TestCoreFacade:
         """Test getting projects through facade."""
         # Setup mock data
         projects = [
-            Project(id=uuid4(), name="Test Project", path="/test"),
-            Project(id=uuid4(), name="Another Project", path="/another"),
+            create_test_project(name="Test Project", path="/test"),
+            create_test_project(name="Another Project", path="/another"),
         ]
         mock_project_service.list_projects.return_value = projects
         
@@ -173,7 +188,7 @@ class TestCoreFacade:
     async def test_create_project(self, facade, mock_project_service):
         """Test creating a project through facade."""
         # Setup mock
-        project = Project(id=uuid4(), name="New Project", path="/new")
+        project = create_test_project(name="New Project", path="/new")
         mock_project_service.create_project.return_value = project
         
         # Create project
@@ -200,7 +215,7 @@ class TestCoreFacade:
     async def test_propose_command(self, facade, mock_project_service, mock_context_service, mock_ai_orchestrator, mock_command_engine):
         """Test proposing a command."""
         # Setup mocks
-        project = Project(id=uuid4(), name="Test", path="/test")
+        project = create_test_project(name="Test", path="/test")
         mock_project_service.get_current_project.return_value = project
         
         command = Command(

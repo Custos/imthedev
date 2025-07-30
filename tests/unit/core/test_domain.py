@@ -31,8 +31,9 @@ class TestCommandStatus:
     def test_command_status_members(self):
         """Test that we can iterate over status values."""
         statuses = list(CommandStatus)
-        assert len(statuses) == 6
+        assert len(statuses) == 7  # Updated to include CANCELLED
         assert CommandStatus.PROPOSED in statuses
+        assert CommandStatus.CANCELLED in statuses
 
 
 class TestCommandResult:
