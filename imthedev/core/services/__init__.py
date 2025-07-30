@@ -5,5 +5,6 @@ defined in the interfaces package.
 """
 
 from imthedev.core.services.command_engine import CommandEngineImpl
+from imthedev.core.services.state_manager import StateManagerImpl
 
-__all__ = ["CommandEngineImpl"]
+__all__ = ["CommandEngineImpl", "StateManagerImpl"]
