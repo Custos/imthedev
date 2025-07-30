@@ -30,7 +30,11 @@ from imthedev.core.interfaces import (
     ProjectService,
     StateManager,
 )
-from imthedev.core.services import CommandEngineImpl, StateManagerImpl
+from imthedev.core.services import (
+    AIOrchestratorImpl,
+    CommandEngineImpl,
+    StateManagerImpl,
+)
 
 __all__ = [
     # Domain models
@@ -57,6 +61,7 @@ __all__ = [
     "ProjectService",
     "StateManager",
     # Service implementations
+    "AIOrchestratorImpl",
     "CommandEngineImpl",
     "StateManagerImpl",
 ]
