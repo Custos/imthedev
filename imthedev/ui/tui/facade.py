@@ -227,7 +227,7 @@ class CoreFacade:
         Returns:
             New autopilot state
         """
-        current_state = await self.state_manager.get_state()
+        current_state = self.state_manager.get_state()
         new_state = not current_state.autopilot_enabled
         await self.state_manager.update_state({"autopilot_enabled": new_state})
         return new_state
@@ -238,7 +238,7 @@ class CoreFacade:
         Returns:
             True if autopilot is enabled
         """
-        state = await self.state_manager.get_state()
+        state = self.state_manager.get_state()
         return state.autopilot_enabled
     
     async def set_ai_model(self, model: str) -> None:
@@ -255,7 +255,7 @@ class CoreFacade:
         Returns:
             Current model identifier
         """
-        state = await self.state_manager.get_state()
+        state = self.state_manager.get_state()
         return state.selected_ai_model
     
     async def get_available_models(self) -> List[str]:
@@ -321,7 +321,7 @@ class CoreFacade:
     async def initialize(self) -> None:
         """Initialize the facade and core services."""
         # Restore state
-        state = await self.state_manager.get_state()
+        state = self.state_manager.get_state()
         
         # If there's a current project, load its context
         if state.current_project_id:
@@ -334,7 +334,7 @@ class CoreFacade:
     async def shutdown(self) -> None:
         """Shutdown the facade and cleanup resources."""
         # Persist state
-        await self.state_manager.get_state()  # This triggers persistence
+        self.state_manager.get_state()  # This triggers persistence
         
         # Clear handlers
         self._ui_event_handlers.clear()

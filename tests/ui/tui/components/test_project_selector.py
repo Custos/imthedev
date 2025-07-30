@@ -74,11 +74,14 @@ class TestProjectSelector:
         # Set up project_list as if compose was called
         selector.project_list = MagicMock()
         
-        selector.update_projects([])
+        with patch.object(selector, 'refresh') as mock_refresh:
+            selector.update_projects([])
         
-        assert selector.projects == []
-        selector.project_list.clear.assert_called_once()
-        selector.project_list.append.assert_not_called()
+            assert selector.projects == []
+            selector.project_list.clear.assert_called_once()
+            selector.project_list.append.assert_not_called()
+            # Should still refresh to update display
+            mock_refresh.assert_called_once()
     
     def test_update_projects_with_data(self, sample_projects):
         """Test updating with project data."""
@@ -88,16 +91,20 @@ class TestProjectSelector:
         mock_list_view.children = [MagicMock(), MagicMock(), MagicMock()]  # Mock 3 children
         selector.project_list = mock_list_view
         
-        selector.update_projects(sample_projects)
+        # Mock refresh method
+        with patch.object(selector, 'refresh') as mock_refresh:
+            selector.update_projects(sample_projects)
         
-        assert selector.projects == sample_projects
-        assert selector.get_project_count() == 3
-        
-        # Verify ListView operations
-        mock_list_view.clear.assert_called_once()
-        assert mock_list_view.append.call_count == 3
-        # Should select first item
-        assert mock_list_view.index == 0
+            assert selector.projects == sample_projects
+            assert selector.get_project_count() == 3
+            
+            # Verify ListView operations
+            mock_list_view.clear.assert_called_once()
+            assert mock_list_view.append.call_count == 3
+            # Should select first item
+            assert mock_list_view.index == 0
+            # Should refresh display
+            mock_refresh.assert_called_once()
     
     def test_update_projects_no_list_view(self, sample_projects):
         """Test updating projects when ListView is not initialized."""
@@ -423,6 +430,22 @@ class TestProjectSelector:
         selector = ProjectSelector()
         # Should not raise exception
         selector.refresh_display()
+    
+    def test_update_projects_triggers_visual_refresh(self, sample_projects):
+        """Test that update_projects triggers a visual refresh of the component."""
+        selector = ProjectSelector()
+        mock_list_view = MagicMock()
+        selector.project_list = mock_list_view
+        
+        # Mock the refresh method to verify it's called
+        with patch.object(selector, 'refresh') as mock_refresh:
+            selector.update_projects(sample_projects)
+            
+            # Verify refresh was called to update the visual display
+            mock_refresh.assert_called_once()
+            
+            # Verify items were added
+            assert mock_list_view.append.call_count == len(sample_projects)
 
 
 class TestProjectSelectedMessage:

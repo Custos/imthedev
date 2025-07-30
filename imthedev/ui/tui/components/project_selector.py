@@ -93,17 +93,24 @@ class ProjectSelector(Widget):
         if self.project_list is None:
             return
         
-        # Clear existing items
+        # Clear existing items by removing all children
         self.project_list.clear()
         
-        # Add new project items
+        # Create ListItems for each project
+        items = []
         for project in projects:
             project_item = self._create_project_item(project)
-            self.project_list.append(project_item)
+            items.append(project_item)
         
-        # Select first item if available
-        if projects and len(self.project_list.children) > 0:
+        # Add all items at once
+        if items:
+            for item in items:
+                self.project_list.append(item)
+            # Select first item if available
             self.project_list.index = 0
+        
+        # Force refresh to update display
+        self.refresh()
     
     def _create_project_item(self, project: Project) -> ListItem:
         """Create a ListItem for a project.

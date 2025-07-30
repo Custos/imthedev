@@ -84,17 +84,14 @@ class ImTheDevApp:
             
             # Initialize repositories
             self.project_repository = ProjectRepository(
-                db_path=self.config.database.path,
-                timeout=self.config.database.timeout
+                db_path=self.config.database.path
             )
             await self.project_repository.initialize()
             logger.debug("Project repository initialized")
             
             self.context_repository = ContextRepository(
-                context_dir=self.config.storage.context_dir,
-                max_history=self.config.storage.max_context_history
+                storage_dir=Path(self.config.storage.context_dir)
             )
-            await self.context_repository.initialize()
             logger.debug("Context repository initialized")
             
             # Initialize core services
@@ -180,40 +177,11 @@ class ImTheDevApp:
             except Exception as e:
                 logger.error(f"Error shutting down core facade: {e}", exc_info=True)
         
-        if self.state_manager:
-            try:
-                await self.state_manager.shutdown()
-                logger.debug("State manager shutdown")
-            except Exception as e:
-                logger.error(f"Error shutting down state manager: {e}", exc_info=True)
+        # Note: Core services (StateManager, CommandEngine, AIOrchestrator) don't have shutdown methods
+        # They manage their resources internally without requiring explicit cleanup
         
-        if self.command_engine:
-            try:
-                await self.command_engine.shutdown()
-                logger.debug("Command engine shutdown")
-            except Exception as e:
-                logger.error(f"Error shutting down command engine: {e}", exc_info=True)
-        
-        if self.ai_orchestrator:
-            try:
-                await self.ai_orchestrator.shutdown()
-                logger.debug("AI orchestrator shutdown")
-            except Exception as e:
-                logger.error(f"Error shutting down AI orchestrator: {e}", exc_info=True)
-        
-        if self.context_repository:
-            try:
-                await self.context_repository.cleanup()
-                logger.debug("Context repository cleanup")
-            except Exception as e:
-                logger.error(f"Error cleaning up context repository: {e}", exc_info=True)
-        
-        if self.project_repository:
-            try:
-                await self.project_repository.cleanup()
-                logger.debug("Project repository cleanup")
-            except Exception as e:
-                logger.error(f"Error cleaning up project repository: {e}", exc_info=True)
+        # Note: Repositories don't have cleanup methods - they use simple file/DB operations
+        # that don't require explicit cleanup
         
         if self.event_bus:
             try:
