@@ -59,7 +59,7 @@ docs = [
 ]
 
 [project.scripts]
-imthedev = "imthedev.main:main"
+imthedev = "imthedev.main:cli_main"  # ← Points to sync function
 
 [project.urls]
 Homepage = "https://github.com/Custos/imthedev"

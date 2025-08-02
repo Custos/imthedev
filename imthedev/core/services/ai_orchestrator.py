@@ -8,97 +8,118 @@ import json
 import logging
 import os
 from abc import ABC, abstractmethod
-from typing import Dict, List, Optional, Tuple, Type
-from uuid import UUID
+from typing import Any, cast
 
 from imthedev.core.domain import Command, ProjectContext
-from imthedev.core.events import Event, EventBus, EventPriority, EventTypes
+from imthedev.core.events import Event, EventBus, EventTypes
 from imthedev.core.interfaces import AIModel, AIOrchestrator, CommandAnalysis
 
+
+def build_context_prompt(context: ProjectContext) -> str:
+    """Build a context prompt from project context.
+
+    Args:
+        context: Project context to build prompt from
+
+    Returns:
+        Formatted context prompt string
+    """
+    lines = []
+
+    # Add recent command history
+    if context.history:
+        lines.append("Recent Commands:")
+        for cmd in context.history[-5:]:  # Last 5 commands
+            lines.append(f"- {cmd.command_text} ({cmd.status.value})")
+
+    # Add current state
+    if context.current_state:
+        lines.append("\nCurrent State:")
+        for key, value in context.current_state.items():
+            lines.append(f"- {key}: {value}")
+
+    # Add AI memory
+    if context.ai_memory:
+        lines.append(f"\nAI Memory:\n{context.ai_memory}")
+
+    return "\n".join(lines)
 
 logger = logging.getLogger(__name__)
 
 
 class AIProviderError(Exception):
     """Raised when AI provider encounters an error."""
+
     pass
 
 
 class InvalidModelError(Exception):
     """Raised when an unsupported AI model is requested."""
+
     pass
 
 
 class AIAdapter(ABC):
     """Abstract base class for AI provider adapters.
-    
+
     Each AI provider (Claude, OpenAI, etc.) must implement this interface
     to integrate with the orchestrator.
     """
-    
+
     @abstractmethod
     async def generate_command(
-        self,
-        context: ProjectContext,
-        objective: str
-    ) -> Tuple[str, str]:
+        self, context: ProjectContext, objective: str
+    ) -> tuple[str, str]:
         """Generate a command based on context and objective.
-        
+
         Args:
             context: Current project context including history
             objective: What the user wants to achieve
-            
+
         Returns:
             Tuple of (command_text, ai_reasoning)
-            
+
         Raises:
             AIProviderError: If generation fails
         """
         pass
-        
+
     @abstractmethod
     async def analyze_result(
-        self,
-        command: Command,
-        output: str,
-        context: ProjectContext
+        self, command: Command, output: str, context: ProjectContext
     ) -> CommandAnalysis:
         """Analyze command execution results.
-        
+
         Args:
             command: The executed command
             output: Output from command execution
             context: Current project context
-            
+
         Returns:
             Analysis with success assessment and recommendations
-            
+
         Raises:
             AIProviderError: If analysis fails
         """
         pass
-        
+
     @abstractmethod
-    async def estimate_tokens(
-        self,
-        context: ProjectContext,
-        objective: str
-    ) -> int:
+    async def estimate_tokens(self, context: ProjectContext, objective: str) -> int:
         """Estimate token usage for a command generation.
-        
+
         Args:
             context: Current project context
             objective: The objective to achieve
-            
+
         Returns:
             Estimated number of tokens
         """
         pass
-        
+
     @abstractmethod
     def is_available(self) -> bool:
         """Check if this adapter is available for use.
-        
+
         Returns:
             True if the adapter can be used (e.g., API key is configured)
         """
@@ -107,10 +128,12 @@ class AIAdapter(ABC):
 
 class ClaudeAdapter(AIAdapter):
     """Adapter for Anthropic's Claude models."""
-    
-    def __init__(self, api_key: Optional[str] = None, model_name: str = "claude-3-opus-20240229") -> None:
+
+    def __init__(
+        self, api_key: str | None = None, model_name: str = "claude-3-opus-20240229"
+    ) -> None:
         """Initialize Claude adapter.
-        
+
         Args:
             api_key: API key for Anthropic. If None, will try to read from environment.
             model_name: Specific Claude model version to use
@@ -118,29 +141,30 @@ class ClaudeAdapter(AIAdapter):
         self._api_key = api_key or os.environ.get("CLAUDE_API_KEY", "")
         self._model_name = model_name
         self._client = None
-        
+
         if self._api_key:
             try:
                 import anthropic
-                self._client = anthropic.Anthropic(api_key=self._api_key)
+
+                self._client = anthropic.AsyncAnthropic(api_key=self._api_key)
             except ImportError:
-                logger.warning("anthropic package not installed. Claude adapter will be unavailable.")
+                logger.warning(
+                    "anthropic package not installed. Claude adapter will be unavailable."
+                )
             except Exception as e:
                 logger.error(f"Failed to initialize Claude client: {e}")
-                
+
     async def generate_command(
-        self,
-        context: ProjectContext,
-        objective: str
-    ) -> Tuple[str, str]:
+        self, context: ProjectContext, objective: str
+    ) -> tuple[str, str]:
         """Generate a command using Claude."""
         if not self._client:
             raise AIProviderError("Claude client not initialized")
-            
+
         try:
             # Build context for Claude
             context_text = self._build_context_prompt(context)
-            
+
             prompt = f"""You are an AI assistant helping with software development tasks.
 
 Project Context:
@@ -158,33 +182,35 @@ Important:
 - Make the command specific and executable
 - Consider the project's current state and history
 """
-            
-            response = await self._client.messages.create_async(
+
+            response = await self._client.messages.create(
                 model=self._model_name,
                 messages=[{"role": "user", "content": prompt}],
                 max_tokens=1000,
-                temperature=0.7
+                temperature=0.7,
             )
-            
-            # Parse response
-            result = json.loads(response.content[0].text)
-            return result["command"], result["reasoning"]
-            
+
+            # Parse response - extract text from TextBlock
+            content_block = response.content[0]
+            if hasattr(content_block, 'text'):
+                result = json.loads(content_block.text)
+                return result["command"], result["reasoning"]
+            else:
+                raise AIProviderError(f"Unexpected response type: {type(content_block)}")
+
         except json.JSONDecodeError as e:
-            raise AIProviderError(f"Failed to parse Claude response: {e}")
+            raise AIProviderError(f"Failed to parse Claude response: {e}") from e
         except Exception as e:
-            raise AIProviderError(f"Claude API error: {e}")
-            
+            raise AIProviderError(f"Claude API error: {e}") from e
+
     async def analyze_result(
-        self,
-        command: Command,
-        output: str,
-        context: ProjectContext
+        self, command: Command, output: str, context: ProjectContext
     ) -> CommandAnalysis:
         """Analyze command results using Claude."""
+        del context  # Currently unused
         if not self._client:
             raise AIProviderError("Claude client not initialized")
-            
+
         try:
             prompt = f"""Analyze the following command execution result:
 
@@ -205,73 +231,55 @@ Respond in JSON format with these fields:
 - "error_diagnosis": string or null
 - "state_updates": object or null
 """
-            
-            response = await self._client.messages.create_async(
+
+            response = await self._client.messages.create(
                 model=self._model_name,
                 messages=[{"role": "user", "content": prompt}],
                 max_tokens=1000,
-                temperature=0.3
+                temperature=0.3,
             )
-            
-            result = json.loads(response.content[0].text)
+
+            content_block = response.content[0]
+            if hasattr(content_block, 'text'):
+                result = json.loads(content_block.text)
+            else:
+                raise AIProviderError(f"Unexpected response type: {type(content_block)}")
             return CommandAnalysis(
                 success=result["success"],
                 next_action=result.get("next_action"),
                 error_diagnosis=result.get("error_diagnosis"),
-                state_updates=result.get("state_updates", {})
+                state_updates=result.get("state_updates", {}),
             )
-            
+
         except json.JSONDecodeError as e:
-            raise AIProviderError(f"Failed to parse Claude response: {e}")
+            raise AIProviderError(f"Failed to parse Claude response: {e}") from e
         except Exception as e:
-            raise AIProviderError(f"Claude API error: {e}")
-            
-    async def estimate_tokens(
-        self,
-        context: ProjectContext,
-        objective: str
-    ) -> int:
+            raise AIProviderError(f"Claude API error: {e}") from e
+
+    async def estimate_tokens(self, context: ProjectContext, objective: str) -> int:
         """Estimate token usage for Claude."""
         # Rough estimation based on context size
         context_text = self._build_context_prompt(context)
         total_chars = len(context_text) + len(objective) + 500  # Buffer for prompt
-        
+
         # Claude uses approximately 1 token per 4 characters
         return total_chars // 4
-        
+
     def is_available(self) -> bool:
         """Check if Claude adapter is available."""
         return bool(self._api_key and self._client is not None)
-        
+
     def _build_context_prompt(self, context: ProjectContext) -> str:
         """Build a context prompt from project context."""
-        lines = []
-        
-        # Add recent command history
-        if context.history:
-            lines.append("Recent Commands:")
-            for cmd in context.history[-5:]:  # Last 5 commands
-                lines.append(f"- {cmd.command_text} ({cmd.status.value})")
-                
-        # Add current state
-        if context.current_state:
-            lines.append("\nCurrent State:")
-            for key, value in context.current_state.items():
-                lines.append(f"- {key}: {value}")
-                
-        # Add AI memory
-        if context.ai_memory:
-            lines.append(f"\nAI Memory:\n{context.ai_memory}")
-            
-        return "\n".join(lines)
+        return build_context_prompt(context)
 
 
 class OpenAIAdapter(AIAdapter):
     """Adapter for OpenAI's GPT models."""
-    
-    def __init__(self, api_key: Optional[str] = None, model_name: str = "gpt-4") -> None:
+
+    def __init__(self, api_key: str | None = None, model_name: str = "gpt-4") -> None:
         """Initialize OpenAI adapter.
-        
+
         Args:
             api_key: API key for OpenAI. If None, will try to read from environment.
             model_name: Specific GPT model to use
@@ -279,33 +287,34 @@ class OpenAIAdapter(AIAdapter):
         self._api_key = api_key or os.environ.get("OPENAI_API_KEY", "")
         self._model_name = model_name
         self._client = None
-        
+
         if self._api_key:
             try:
                 import openai
+
                 self._client = openai.AsyncOpenAI(api_key=self._api_key)
             except ImportError:
-                logger.warning("openai package not installed. OpenAI adapter will be unavailable.")
+                logger.warning(
+                    "openai package not installed. OpenAI adapter will be unavailable."
+                )
             except Exception as e:
                 logger.error(f"Failed to initialize OpenAI client: {e}")
-                
+
     async def generate_command(
-        self,
-        context: ProjectContext,
-        objective: str
-    ) -> Tuple[str, str]:
+        self, context: ProjectContext, objective: str
+    ) -> tuple[str, str]:
         """Generate a command using GPT."""
         if not self._client:
             raise AIProviderError("OpenAI client not initialized")
-            
+
         try:
             # Build context for GPT
             context_text = self._build_context_prompt(context)
-            
+
             messages = [
                 {
                     "role": "system",
-                    "content": "You are an AI assistant helping with software development tasks. Always respond in valid JSON format."
+                    "content": "You are an AI assistant helping with software development tasks. Always respond in valid JSON format.",
                 },
                 {
                     "role": "user",
@@ -317,41 +326,39 @@ Current Objective: {objective}
 Generate a single shell command that would help achieve the goal.
 Respond in JSON format with exactly two fields:
 - "command": The exact command to execute
-- "reasoning": A brief explanation of why this command helps achieve the objective"""
-                }
+- "reasoning": A brief explanation of why this command helps achieve the objective""",
+                },
             ]
-            
-            response = await self._client.chat.completions.create(
+
+            response = await self._client.chat.completions.create(  # type: ignore[call-overload]
                 model=self._model_name,
                 messages=messages,
                 max_tokens=1000,
                 temperature=0.7,
-                response_format={"type": "json_object"}
+                response_format={"type": "json_object"},
             )
-            
+
             result = json.loads(response.choices[0].message.content)
             return result["command"], result["reasoning"]
-            
+
         except json.JSONDecodeError as e:
-            raise AIProviderError(f"Failed to parse OpenAI response: {e}")
+            raise AIProviderError(f"Failed to parse OpenAI response: {e}") from e
         except Exception as e:
-            raise AIProviderError(f"OpenAI API error: {e}")
-            
+            raise AIProviderError(f"OpenAI API error: {e}") from e
+
     async def analyze_result(
-        self,
-        command: Command,
-        output: str,
-        context: ProjectContext
+        self, command: Command, output: str, context: ProjectContext
     ) -> CommandAnalysis:
         """Analyze command results using GPT."""
+        del context  # Currently unused
         if not self._client:
             raise AIProviderError("OpenAI client not initialized")
-            
+
         try:
             messages = [
                 {
                     "role": "system",
-                    "content": "You are an AI assistant analyzing command execution results. Always respond in valid JSON format."
+                    "content": "You are an AI assistant analyzing command execution results. Always respond in valid JSON format.",
                 },
                 {
                     "role": "user",
@@ -366,77 +373,71 @@ Respond in JSON with:
 - "success": boolean
 - "next_action": string or null
 - "error_diagnosis": string or null
-- "state_updates": object or null"""
-                }
+- "state_updates": object or null""",
+                },
             ]
-            
-            response = await self._client.chat.completions.create(
+
+            response = await self._client.chat.completions.create(  # type: ignore[call-overload]
                 model=self._model_name,
                 messages=messages,
                 max_tokens=1000,
                 temperature=0.3,
-                response_format={"type": "json_object"}
+                response_format={"type": "json_object"},
             )
-            
+
             result = json.loads(response.choices[0].message.content)
             return CommandAnalysis(
                 success=result["success"],
                 next_action=result.get("next_action"),
                 error_diagnosis=result.get("error_diagnosis"),
-                state_updates=result.get("state_updates", {})
+                state_updates=result.get("state_updates", {}),
             )
-            
+
         except json.JSONDecodeError as e:
-            raise AIProviderError(f"Failed to parse OpenAI response: {e}")
+            raise AIProviderError(f"Failed to parse OpenAI response: {e}") from e
         except Exception as e:
-            raise AIProviderError(f"OpenAI API error: {e}")
-            
-    async def estimate_tokens(
-        self,
-        context: ProjectContext,
-        objective: str
-    ) -> int:
+            raise AIProviderError(f"OpenAI API error: {e}") from e
+
+    async def estimate_tokens(self, context: ProjectContext, objective: str) -> int:
         """Estimate token usage for GPT."""
         # Similar estimation to Claude
         context_text = self._build_context_prompt(context)
         total_chars = len(context_text) + len(objective) + 500
-        
+
         # GPT uses approximately 1 token per 4 characters
         return total_chars // 4
-        
+
     def is_available(self) -> bool:
         """Check if OpenAI adapter is available."""
         return bool(self._api_key and self._client is not None)
-        
+
     def _build_context_prompt(self, context: ProjectContext) -> str:
         """Build a context prompt from project context."""
-        # Reuse Claude's implementation
-        return ClaudeAdapter._build_context_prompt(self, context)
+        return build_context_prompt(context)
 
 
 class MockAIAdapter(AIAdapter):
     """Mock adapter for testing purposes."""
-    
+
     def __init__(self, should_fail: bool = False) -> None:
         """Initialize mock adapter.
-        
+
         Args:
             should_fail: If True, all operations will raise AIProviderError
         """
         self._should_fail = should_fail
         self._call_count = 0
-        
+
     async def generate_command(
-        self,
-        context: ProjectContext,
-        objective: str
-    ) -> Tuple[str, str]:
+        self, context: ProjectContext, objective: str
+    ) -> tuple[str, str]:
         """Generate a mock command."""
+        del context  # Currently unused
         self._call_count += 1
-        
+
         if self._should_fail:
             raise AIProviderError("Mock AI provider error")
-            
+
         # Generate predictable commands based on objective
         if "test" in objective.lower():
             return "pytest", "Running tests based on objective"
@@ -444,35 +445,32 @@ class MockAIAdapter(AIAdapter):
             return "python -m build", "Building project based on objective"
         else:
             return f"echo 'Executing: {objective}'", f"Mock command for: {objective}"
-            
+
     async def analyze_result(
-        self,
-        command: Command,
-        output: str,
-        context: ProjectContext
+        self, command: Command, output: str, context: ProjectContext
     ) -> CommandAnalysis:
         """Analyze with mock logic."""
+        del context, output  # Currently unused
         if self._should_fail:
             raise AIProviderError("Mock AI provider error")
-            
+
         # Simple analysis based on exit code
         success = command.result.exit_code == 0 if command.result else True
-        
+
         return CommandAnalysis(
             success=success,
             next_action="Continue with next task" if success else "Fix the error",
-            error_diagnosis=None if success else "Command failed with non-zero exit code",
-            state_updates={"last_command": command.command_text}
+            error_diagnosis=None
+            if success
+            else "Command failed with non-zero exit code",
+            state_updates={"last_command": command.command_text},
         )
-        
-    async def estimate_tokens(
-        self,
-        context: ProjectContext,
-        objective: str
-    ) -> int:
+
+    async def estimate_tokens(self, context: ProjectContext, objective: str) -> int:
         """Estimate with mock logic."""
+        del context, objective  # Currently unused
         return 100  # Fixed estimate for testing
-        
+
     def is_available(self) -> bool:
         """Mock adapter is always available."""
         return True
@@ -480,165 +478,163 @@ class MockAIAdapter(AIAdapter):
 
 class AIOrchestratorImpl(AIOrchestrator):
     """Implementation of AI orchestration with multi-model support.
-    
+
     This orchestrator uses the Adapter Pattern to support multiple AI providers
     through a unified interface. It manages model selection, error handling,
     and event notifications.
     """
-    
+
     # Registry of adapter classes by model identifier
-    ADAPTER_REGISTRY: Dict[str, Type[AIAdapter]] = {
+    ADAPTER_REGISTRY: dict[str, type[AIAdapter]] = {
         AIModel.CLAUDE: ClaudeAdapter,
         AIModel.CLAUDE_INSTANT: ClaudeAdapter,
         AIModel.GPT4: OpenAIAdapter,
         AIModel.GPT35_TURBO: OpenAIAdapter,
     }
-    
+
     def __init__(self, event_bus: EventBus) -> None:
         """Initialize the AI orchestrator.
-        
+
         Args:
             event_bus: Event bus for publishing AI-related events
         """
         self._event_bus = event_bus
-        self._adapters: Dict[str, AIAdapter] = {}
+        self._adapters: dict[str, AIAdapter] = {}
         self._initialize_adapters()
-        
+
     def _initialize_adapters(self) -> None:
         """Initialize available AI adapters."""
         # Initialize Claude adapters
         claude_key = os.environ.get("CLAUDE_API_KEY")
         if claude_key:
             self._adapters[AIModel.CLAUDE] = ClaudeAdapter(
-                api_key=claude_key,
-                model_name="claude-3-opus-20240229"
+                api_key=claude_key, model_name="claude-3-opus-20240229"
             )
             self._adapters[AIModel.CLAUDE_INSTANT] = ClaudeAdapter(
-                api_key=claude_key,
-                model_name="claude-3-sonnet-20240229"
+                api_key=claude_key, model_name="claude-3-sonnet-20240229"
             )
-            
+
         # Initialize OpenAI adapters
         openai_key = os.environ.get("OPENAI_API_KEY")
         if openai_key:
             self._adapters[AIModel.GPT4] = OpenAIAdapter(
-                api_key=openai_key,
-                model_name="gpt-4"
+                api_key=openai_key, model_name="gpt-4"
             )
             self._adapters[AIModel.GPT35_TURBO] = OpenAIAdapter(
-                api_key=openai_key,
-                model_name="gpt-3.5-turbo"
+                api_key=openai_key, model_name="gpt-3.5-turbo"
             )
-            
+
         logger.info(f"Initialized adapters for models: {list(self._adapters.keys())}")
-        
+
     async def generate_command(
-        self,
-        context: ProjectContext,
-        objective: str,
-        model: str = AIModel.CLAUDE
-    ) -> Tuple[str, str]:
+        self, context: ProjectContext, objective: str, model: str = AIModel.CLAUDE
+    ) -> tuple[str, str]:
         """Generate a command based on context and objective.
-        
+
         Args:
             context: Current project context including history
             objective: What the user wants to achieve
             model: AI model to use for generation
-            
+
         Returns:
             Tuple of (command_text, ai_reasoning)
-            
+
         Raises:
             AIProviderError: If AI service is unavailable
             InvalidModelError: If the specified model is not supported
         """
         adapter = self._get_adapter(model)
-        
+
         try:
             # Publish event for command generation start
-            await self._event_bus.publish(Event(
-                type=EventTypes.AI_GENERATION_STARTED,
-                payload={
-                    "model": model,
-                    "objective": objective,
-                    "context_size": len(context.history)
-                }
-            ))
-            
+            await self._event_bus.publish(
+                Event(
+                    type=EventTypes.AI_GENERATION_STARTED,
+                    payload={
+                        "model": model,
+                        "objective": objective,
+                        "context_size": len(context.history),
+                    },
+                )
+            )
+
             # Generate command
             command_text, reasoning = await adapter.generate_command(context, objective)
-            
+
             # Publish success event
-            await self._event_bus.publish(Event(
-                type=EventTypes.AI_GENERATION_COMPLETED,
-                payload={
-                    "model": model,
-                    "command": command_text,
-                    "reasoning": reasoning
-                }
-            ))
-            
+            await self._event_bus.publish(
+                Event(
+                    type=EventTypes.AI_GENERATION_COMPLETED,
+                    payload={
+                        "model": model,
+                        "command": command_text,
+                        "reasoning": reasoning,
+                    },
+                )
+            )
+
             return command_text, reasoning
-            
+
         except Exception as e:
             # Publish failure event
-            await self._event_bus.publish(Event(
-                type=EventTypes.AI_GENERATION_FAILED,
-                payload={
-                    "model": model,
-                    "error": str(e),
-                    "error_type": type(e).__name__
-                }
-            ))
+            await self._event_bus.publish(
+                Event(
+                    type=EventTypes.AI_GENERATION_FAILED,
+                    payload={
+                        "model": model,
+                        "error": str(e),
+                        "error_type": type(e).__name__,
+                    },
+                )
+            )
             raise
-            
+
     async def analyze_result(
-        self,
-        command: Command,
-        output: str,
-        context: ProjectContext
+        self, command: Command, output: str, context: ProjectContext
     ) -> CommandAnalysis:
         """Analyze command execution results and suggest next steps.
-        
+
         Args:
             command: The executed command
             output: Output from command execution
             context: Current project context
-            
+
         Returns:
             Analysis with success assessment and recommendations
-            
+
         Raises:
             AIProviderError: If AI service is unavailable
         """
         # Use the same model that generated the command, or default
         model = context.metadata.get("last_ai_model", AIModel.CLAUDE)
         adapter = self._get_adapter(model)
-        
+
         try:
             # Analyze the result
             analysis = await adapter.analyze_result(command, output, context)
-            
+
             # Publish analysis event
-            await self._event_bus.publish(Event(
-                type=EventTypes.AI_ANALYSIS_COMPLETED,
-                payload={
-                    "model": model,
-                    "command_id": str(command.id),
-                    "success": analysis.success,
-                    "has_next_action": analysis.next_action is not None
-                }
-            ))
-            
+            await self._event_bus.publish(
+                Event(
+                    type=EventTypes.AI_ANALYSIS_COMPLETED,
+                    payload={
+                        "model": model,
+                        "command_id": str(command.id),
+                        "success": analysis.success,
+                        "has_next_action": analysis.next_action is not None,
+                    },
+                )
+            )
+
             return analysis
-            
+
         except Exception as e:
             logger.error(f"Failed to analyze command result: {e}")
             raise
-            
-    def get_available_models(self) -> List[str]:
+
+    def get_available_models(self) -> list[str]:
         """Get list of available AI models.
-        
+
         Returns:
             List of model identifiers that can be used
         """
@@ -647,36 +643,32 @@ class AIOrchestratorImpl(AIOrchestrator):
             for model_id, adapter in self._adapters.items()
             if adapter.is_available()
         ]
-        
-    async def estimate_tokens(
-        self,
-        context: ProjectContext,
-        objective: str
-    ) -> int:
+
+    async def estimate_tokens(self, context: ProjectContext, objective: str) -> int:
         """Estimate token usage for a command generation.
-        
+
         Args:
             context: Current project context
             objective: The objective to achieve
-            
+
         Returns:
             Estimated number of tokens
         """
         # Use default model for estimation
         model = context.metadata.get("last_ai_model", AIModel.CLAUDE)
         adapter = self._get_adapter(model)
-        
+
         return await adapter.estimate_tokens(context, objective)
-        
+
     def _get_adapter(self, model: str) -> AIAdapter:
         """Get the adapter for a specific model.
-        
+
         Args:
             model: Model identifier
-            
+
         Returns:
             Configured adapter for the model
-            
+
         Raises:
             InvalidModelError: If model is not supported or unavailable
         """
@@ -696,15 +688,15 @@ class AIOrchestratorImpl(AIOrchestrator):
                     f"Model {model} is not supported. "
                     f"Available models: {', '.join(self.get_available_models())}"
                 )
-                
+
         return self._adapters[model]
-        
+
     def register_adapter(self, model_id: str, adapter: AIAdapter) -> None:
         """Register a custom adapter for a model.
-        
+
         This method allows for runtime registration of adapters,
         useful for testing or adding custom AI providers.
-        
+
         Args:
             model_id: Identifier for the model
             adapter: Adapter instance to register

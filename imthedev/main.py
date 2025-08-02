@@ -37,6 +37,12 @@ async def main(config_file: str | None = None) -> None:
             await app.cleanup()
 
 
+def cli_main() -> None:
+    """Synchronous entry point for CLI script."""
+    config_file = sys.argv[1] if len(sys.argv) > 1 else None
+    asyncio.run(main(config_file))
+
+
 if __name__ == "__main__":
     # Allow running directly with optional config file argument
     config_file = sys.argv[1] if len(sys.argv) > 1 else None

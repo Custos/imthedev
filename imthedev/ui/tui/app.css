@@ -1,0 +1,185 @@
+/* Styling for the main ImTheDevApp TUI */
+
+/* Main container layout */
+#main-container {
+    height: 1fr;
+    width: 100%;
+}
+
+#content-area {
+    height: 100%;
+    width: 100%;
+}
+
+/* Left panel - Project selector */
+#left-panel {
+    width: 30%;
+    height: 100%;
+    border: solid $primary;
+    padding: 1;
+    margin: 0 1 0 0;
+}
+
+#projects-header {
+    text-align: center;
+    padding: 1;
+    background: $surface;
+    border-bottom: solid $primary;
+}
+
+#project-selector {
+    height: 1fr;
+    width: 100%;
+}
+
+#project-selector:focus {
+    border: thick $accent;
+}
+
+/* Center panel - Command dashboard */
+#center-panel {
+    width: 40%;
+    height: 100%;
+    border: solid $secondary;
+    padding: 1;
+    margin: 0 1;
+}
+
+#workflow-header {
+    text-align: center;
+    padding: 1;
+    background: $surface;
+    border-bottom: solid $secondary;
+}
+
+#command-dashboard {
+    height: 1fr;
+    width: 100%;
+}
+
+#command-dashboard:focus {
+    border: thick $accent;
+}
+
+#command-dashboard-container {
+    height: 100%;
+    width: 100%;
+}
+
+#current-command-display {
+    padding: 1;
+    margin: 1;
+    background: $panel;
+    border: solid $primary;
+}
+
+#command-input {
+    margin: 1;
+}
+
+#command-history-scroll {
+    height: 1fr;
+    margin: 1;
+    border: solid $primary;
+}
+
+/* Right panel - Approval controls */
+#right-panel {
+    width: 30%;
+    height: 100%;
+    border: solid $success;
+    padding: 1;
+}
+
+#approval-controls {
+    height: 100%;
+    width: 100%;
+}
+
+#approval-controls:focus {
+    border: thick $accent;
+}
+
+#controls-title {
+    text-align: center;
+    padding: 1;
+}
+
+#approval-status {
+    text-align: center;
+    padding: 1;
+    margin: 1;
+    background: $panel;
+}
+
+#approval-buttons {
+    height: auto;
+    align: center middle;
+    padding: 1;
+}
+
+#approve {
+    margin: 0 1;
+}
+
+#deny {
+    margin: 0 1;
+}
+
+#autopilot {
+    margin: 0 1;
+}
+
+/* Focus styling */
+Widget:focus {
+    background: $boost;
+}
+
+/* Global styling */
+Screen {
+    background: $background;
+}
+
+Header {
+    background: $primary;
+}
+
+Footer {
+    background: $primary;
+}
+
+/* Label styling */
+Label {
+    height: auto;
+    color: $text;
+}
+
+/* Static widget styling */
+Static {
+    height: auto;
+    color: $text;
+}
+
+/* ScrollableContainer styling */
+ScrollableContainer {
+    scrollbar-size: 1 1;
+    scrollbar-color: $accent;
+}
+
+/* Button hover effects */
+Button:hover {
+    background: $primary-lighten-1;
+}
+
+Button:focus {
+    border: thick $accent;
+}
+
+/* Input styling */
+Input {
+    background: $surface;
+}
+
+Input:focus {
+    border: thick $accent;
+}
