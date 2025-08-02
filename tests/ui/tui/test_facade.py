@@ -3,105 +3,12 @@
 This module tests the facade that bridges the UI and core services.
 """
 
-import sys
-from unittest.mock import AsyncMock, MagicMock, Mock
+from unittest.mock import AsyncMock, Mock
 from uuid import uuid4
 
 import pytest
 
-
-# Mock the components before importing to prevent import errors
-# Create mock message classes
-class MockMessage:
-    pass
-
-
-# ProjectSelector mock
-project_selector_mock = MagicMock()
-project_selector_mock.__name__ = "ProjectSelector"
-project_selected_mock = type(
-    "ProjectSelected",
-    (MockMessage,),
-    {
-        "__init__": lambda self, project_id, project_name, project_path: (
-            setattr(self, "project_id", project_id),
-            setattr(self, "project_name", project_name),
-            setattr(self, "project_path", project_path),
-        )
-    },
-)
-project_selector_mock.ProjectSelected = project_selected_mock
-
-# CommandDashboard mock
-command_dashboard_mock = MagicMock()
-command_dashboard_mock.__name__ = "CommandDashboard"
-command_submitted_mock = type(
-    "CommandSubmitted",
-    (MockMessage,),
-    {
-        "__init__": lambda self, command, command_id: (
-            setattr(self, "command", command),
-            setattr(self, "command_id", command_id),
-        )
-    },
-)
-command_dashboard_mock.CommandSubmitted = command_submitted_mock
-command_cleared_mock = type("CommandCleared", (MockMessage,), {})
-command_dashboard_mock.CommandCleared = command_cleared_mock
-
-# ApprovalControls mock
-approval_controls_mock = MagicMock()
-approval_controls_mock.__name__ = "ApprovalControls"
-command_approved_mock = type(
-    "CommandApproved",
-    (MockMessage,),
-    {"__init__": lambda self, command_id: setattr(self, "command_id", command_id)},
-)
-approval_controls_mock.CommandApproved = command_approved_mock
-command_denied_mock = type(
-    "CommandDenied",
-    (MockMessage,),
-    {"__init__": lambda self, command_id: setattr(self, "command_id", command_id)},
-)
-approval_controls_mock.CommandDenied = command_denied_mock
-autopilot_toggled_mock = type(
-    "AutopilotToggled",
-    (MockMessage,),
-    {"__init__": lambda self, enabled: setattr(self, "enabled", enabled)},
-)
-approval_controls_mock.AutopilotToggled = autopilot_toggled_mock
-
-# Mock the component modules
-sys.modules["imthedev.ui.tui.components.project_selector"] = MagicMock(
-    ProjectSelector=project_selector_mock
-)
-sys.modules["imthedev.ui.tui.components.command_dashboard"] = MagicMock(
-    CommandDashboard=command_dashboard_mock
-)
-sys.modules["imthedev.ui.tui.components.approval_controls"] = MagicMock(
-    ApprovalControls=approval_controls_mock
-)
-
-
-# Cleanup function to remove mocked modules after tests
-def cleanup_mocked_modules():
-    """Remove mocked component modules to not interfere with other tests."""
-    modules_to_remove = [
-        "imthedev.ui.tui.components.project_selector",
-        "imthedev.ui.tui.components.command_dashboard",
-        "imthedev.ui.tui.components.approval_controls",
-    ]
-    for module in modules_to_remove:
-        if module in sys.modules:
-            del sys.modules[module]
-
-
-# Pytest fixture to automatically clean up mocked modules
-@pytest.fixture(autouse=True)
-def cleanup_mocks():
-    """Automatically clean up mocked modules after each test."""
-    yield
-    cleanup_mocked_modules()
+from tests.ui.tui.test_isolation import mock_tui_components, clean_imports
 
 
 from datetime import datetime
@@ -196,13 +103,15 @@ def mock_state_manager() -> Mock:
         selected_ai_model="claude",
         ui_preferences={},
     )
-    manager.get_state = AsyncMock(return_value=state)
+    manager.get_state = Mock(return_value=state)
     manager.update_state = AsyncMock()
     return manager
 
 
 @pytest.fixture
 def facade(
+    mock_tui_components,
+    clean_imports,
     mock_event_bus,
     mock_project_service,
     mock_context_service,
