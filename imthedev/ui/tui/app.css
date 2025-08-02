@@ -183,3 +183,97 @@ Input {
 Input:focus {
     border: thick $accent;
 }
+
+/* Configuration Screen Styling */
+ConfigurationScreen {
+    padding: 1;
+    width: 80%;
+    height: 80%;
+    background: $surface;
+    border: thick $primary;
+    align: center middle;
+}
+
+.config-header {
+    text-style: bold;
+    color: $primary;
+    margin-bottom: 1;
+    text-align: center;
+}
+
+.config-section {
+    padding: 1;
+    margin-bottom: 1;
+}
+
+.config-field {
+    margin-bottom: 1;
+}
+
+.config-label {
+    margin-bottom: 0;
+    color: $text-muted;
+    height: 1;
+}
+
+.config-input {
+    width: 100%;
+    background: $panel;
+}
+
+.config-input:focus {
+    border: thick $accent;
+}
+
+.config-buttons {
+    dock: bottom;
+    height: 3;
+    align: center middle;
+    padding: 1;
+}
+
+.success-message {
+    color: $success;
+    text-style: italic;
+    text-align: center;
+}
+
+.error-message {
+    color: $error;
+    text-style: italic;
+    text-align: center;
+}
+
+/* TabbedContent styling for configuration */
+TabbedContent {
+    height: 1fr;
+}
+
+TabPane {
+    padding: 1;
+}
+
+/* Switch styling for configuration */
+Switch {
+    background: $panel;
+}
+
+Switch:focus {
+    border: thick $accent;
+}
+
+/* Select dropdown styling */
+Select {
+    background: $panel;
+}
+
+Select:focus {
+    border: thick $accent;
+}
+
+/* Status message styling */
+#status-message {
+    height: 2;
+    padding: 1;
+    text-align: center;
+}

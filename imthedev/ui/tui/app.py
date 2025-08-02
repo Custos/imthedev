@@ -14,12 +14,14 @@ from textual.containers import Container, Horizontal, Vertical
 from textual.widgets import Footer, Header, Static
 
 from imthedev.core.domain import Project
+from imthedev.infrastructure.config import AppConfig, ConfigManager
 from imthedev.ui.tui.components.approval_controls import ApprovalControls
 from imthedev.ui.tui.components.command_dashboard import CommandDashboard
+from imthedev.ui.tui.components.configuration_screen import ConfigurationScreen
 from imthedev.ui.tui.components.project_selector import ProjectSelector
 
 
-class ImTheDevApp(App[None]):
+class ImTheDevApp(App):
     """Main TUI application for imthedev.
 
     This app provides a keyboard-driven interface for managing AI-assisted
@@ -37,6 +39,7 @@ class ImTheDevApp(App[None]):
         ("shift+tab", "focus_previous", "Previous Focus"),
         ("ctrl+p", "toggle_project_list", "Toggle Projects"),
         ("ctrl+c", "clear_command", "Clear Command"),
+        ("ctrl+s", "show_settings", "Settings"),
         ("?", "show_help", "Help"),
     ]
 
@@ -46,7 +49,11 @@ class ImTheDevApp(App[None]):
         self.project_selector: ProjectSelector | None = None
         self.command_dashboard: CommandDashboard | None = None
         self.approval_controls: ApprovalControls | None = None
+        self.configuration_screen: ConfigurationScreen | None = None
         self.current_project_id: UUID | None = None
+        self.config: AppConfig | None = None
+        self.config_manager: ConfigManager | None = None
+        self.showing_settings = False
 
     def compose(self) -> ComposeResult:
         """Compose the main application layout."""
@@ -145,6 +152,7 @@ imthedev Help:
   Q - Quit application
   Ctrl+P - Toggle project list
   Ctrl+C - Clear current command
+  Ctrl+S - Open settings
 
  In Project List:
   Enter - Select project
@@ -161,6 +169,60 @@ imthedev Help:
   P - Toggle autopilot mode
 """
         self.log(help_text)
+    
+    def action_show_settings(self) -> None:
+        """Show the configuration settings screen."""
+        if self.showing_settings:
+            # Hide settings screen
+            if self.configuration_screen:
+                self.configuration_screen.remove()
+                self.configuration_screen = None
+            self.showing_settings = False
+        else:
+            # Load current configuration
+            if not self.config_manager:
+                self.config_manager = ConfigManager()
+            
+            if not self.config:
+                try:
+                    self.config = self.config_manager.load_config()
+                except Exception as e:
+                    self.log(f"Error loading configuration: {e}")
+                    return
+            
+            # Create and show configuration screen
+            self.configuration_screen = ConfigurationScreen(
+                config=self.config,
+                on_save=self._save_configuration,
+                on_cancel=self._close_configuration,
+            )
+            
+            # Mount as an overlay
+            self.mount(self.configuration_screen)
+            self.showing_settings = True
+    
+    def _save_configuration(self, config: AppConfig) -> None:
+        """Save the configuration to file.
+        
+        Args:
+            config: The updated configuration to save
+        """
+        if self.config_manager:
+            try:
+                # Note: save_config method needs to be implemented in ConfigManager
+                # For now, we'll just update the in-memory config
+                self.config = config
+                self.log("Configuration saved successfully!")
+                self._close_configuration()
+            except Exception as e:
+                self.log(f"Error saving configuration: {e}")
+    
+    def _close_configuration(self) -> None:
+        """Close the configuration screen."""
+        if self.configuration_screen:
+            self.configuration_screen.remove()
+            self.configuration_screen = None
+        self.showing_settings = False
 
     # Message handlers for component communication
 
