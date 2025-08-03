@@ -311,13 +311,17 @@ class ProjectSelector(Widget):
         if self.dialog_container:
             return  # Dialog already open
         
+        # Create the input fields
+        name_input = Input(placeholder="Enter project name", id="project-name-input")
+        path_input = Input(placeholder="Enter project path", id="project-path-input")
+        
         self.dialog_container = Container(
             Vertical(
                 Static("Create New Project", classes="dialog-title"),
                 Label("Project Name:"),
-                Input(placeholder="Enter project name", id="project-name-input"),
+                name_input,
                 Label("Project Path:"),
-                Input(placeholder="Enter project path", id="project-path-input"),
+                path_input,
                 Horizontal(
                     Button("Create", variant="primary", id="create-confirm"),
                     Button("Cancel", variant="default", id="create-cancel"),
@@ -329,9 +333,8 @@ class ProjectSelector(Widget):
         )
         self.mount(self.dialog_container)
         
-        # Focus the name input
-        name_input = self.query_one("#project-name-input", Input)
-        name_input.focus()
+        # Focus the name input after mounting
+        self.call_after_refresh(name_input.focus)
     
     def show_rename_dialog(self, project: Project) -> None:
         """Display the rename project dialog."""
@@ -339,11 +342,15 @@ class ProjectSelector(Widget):
             return  # Dialog already open
         
         self.editing_project = project
+        
+        # Create the input field
+        rename_input = Input(value=project.name, id="rename-input")
+        
         self.dialog_container = Container(
             Vertical(
                 Static(f"Rename Project: {project.name}", classes="dialog-title"),
                 Label("New Name:"),
-                Input(value=project.name, id="rename-input"),
+                rename_input,
                 Horizontal(
                     Button("Rename", variant="primary", id="rename-confirm"),
                     Button("Cancel", variant="default", id="rename-cancel"),
@@ -355,9 +362,8 @@ class ProjectSelector(Widget):
         )
         self.mount(self.dialog_container)
         
-        # Focus and select all text in the input
-        rename_input = self.query_one("#rename-input", Input)
-        rename_input.focus()
+        # Focus and select all text in the input after mounting
+        self.call_after_refresh(rename_input.focus)
     
     def show_delete_confirmation(self, project: Project) -> None:
         """Display the delete confirmation dialog."""
@@ -394,8 +400,12 @@ class ProjectSelector(Widget):
     @on(Button.Pressed, "#create-confirm")
     def handle_create_confirm(self) -> None:
         """Handle create project confirmation."""
-        name_input = self.query_one("#project-name-input", Input)
-        path_input = self.query_one("#project-path-input", Input)
+        # Query the inputs from the dialog container
+        if not self.dialog_container:
+            return
+        
+        name_input = self.dialog_container.query_one("#project-name-input", Input)
+        path_input = self.dialog_container.query_one("#project-path-input", Input)
         
         name = name_input.value.strip()
         path = path_input.value.strip()
@@ -433,11 +443,11 @@ class ProjectSelector(Widget):
     @on(Button.Pressed, "#rename-confirm")
     def handle_rename_confirm(self) -> None:
         """Handle rename project confirmation."""
-        if not self.editing_project:
+        if not self.editing_project or not self.dialog_container:
             self.close_dialog()
             return
         
-        rename_input = self.query_one("#rename-input", Input)
+        rename_input = self.dialog_container.query_one("#rename-input", Input)
         new_name = rename_input.value.strip()
         
         if new_name and new_name != self.editing_project.name:
