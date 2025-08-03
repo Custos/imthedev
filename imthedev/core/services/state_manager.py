@@ -46,10 +46,9 @@ class StateManagerImpl(StateManager):
     """
 
     VALID_AI_MODELS = {
-        AIModel.CLAUDE,
-        AIModel.CLAUDE_INSTANT,
-        AIModel.GPT4,
-        AIModel.GPT35_TURBO,
+        AIModel.GEMINI_FLASH,
+        AIModel.GEMINI_PRO,
+        AIModel.GEMINI_FLASH_8B,
     }
 
     def __init__(

@@ -74,7 +74,7 @@ class TestStateManagerBasics:
 
         assert state.current_project_id is None
         assert state.autopilot_enabled is False
-        assert state.selected_ai_model == AIModel.CLAUDE
+        assert state.selected_ai_model == AIModel.GEMINI_FLASH
         assert state.ui_preferences == {}
 
     async def test_update_state_single_field(
@@ -89,7 +89,7 @@ class TestStateManagerBasics:
         assert state.current_project_id == project_id
         # Other fields should remain unchanged
         assert state.autopilot_enabled is False
-        assert state.selected_ai_model == AIModel.CLAUDE
+        assert state.selected_ai_model == AIModel.GEMINI_FLASH
 
     async def test_update_state_multiple_fields(
         self, state_manager: StateManagerImpl
@@ -97,7 +97,7 @@ class TestStateManagerBasics:
         """Test updating multiple state fields at once."""
         updates = {
             "autopilot_enabled": True,
-            "selected_ai_model": AIModel.GPT4,
+            "selected_ai_model": AIModel.GEMINI_PRO,
             "ui_preferences": {"theme": "dark", "font_size": 14},
         }
 
@@ -105,7 +105,7 @@ class TestStateManagerBasics:
 
         state = state_manager.get_state()
         assert state.autopilot_enabled is True
-        assert state.selected_ai_model == AIModel.GPT4
+        assert state.selected_ai_model == AIModel.GEMINI_PRO
         assert state.ui_preferences == {"theme": "dark", "font_size": 14}
 
     async def test_update_state_invalid_field(
@@ -183,7 +183,7 @@ class TestAIModelSelection:
 
     async def test_set_valid_ai_models(self, state_manager: StateManagerImpl) -> None:
         """Test setting each valid AI model."""
-        for model in [AIModel.CLAUDE_INSTANT, AIModel.GPT4, AIModel.GPT35_TURBO]:
+        for model in [AIModel.GEMINI_FLASH, AIModel.GEMINI_PRO, AIModel.GEMINI_FLASH_8B]:
             await state_manager.set_ai_model(model)
             assert state_manager.get_state().selected_ai_model == model
 
@@ -203,12 +203,12 @@ class TestAIModelSelection:
 
         event_bus.subscribe(EventTypes.STATE_MODEL_CHANGED, collect_event)
 
-        await state_manager.set_ai_model(AIModel.GPT4)
+        await state_manager.set_ai_model(AIModel.GEMINI_PRO)
 
         assert len(events) == 1
         assert events[0].type == EventTypes.STATE_MODEL_CHANGED
-        assert events[0].payload["old_model"] == AIModel.CLAUDE
-        assert events[0].payload["new_model"] == AIModel.GPT4
+        assert events[0].payload["old_model"] == AIModel.GEMINI_FLASH
+        assert events[0].payload["new_model"] == AIModel.GEMINI_PRO
 
 
 class TestSubscriptions:
@@ -225,7 +225,7 @@ class TestSubscriptions:
         # Make some changes
         await state_manager.update_state({"autopilot_enabled": True})
         await state_manager.toggle_autopilot()
-        await state_manager.set_ai_model(AIModel.GPT4)
+        await state_manager.set_ai_model(AIModel.GEMINI_PRO)
 
         assert collector.call_count == 3
         assert len(collector.states) == 3
@@ -233,7 +233,7 @@ class TestSubscriptions:
         # Verify final state
         final_state = collector.states[-1]
         assert final_state.autopilot_enabled is False
-        assert final_state.selected_ai_model == AIModel.GPT4
+        assert final_state.selected_ai_model == AIModel.GEMINI_PRO
 
     async def test_unsubscribe_stops_updates(
         self, state_manager: StateManagerImpl
@@ -252,7 +252,7 @@ class TestSubscriptions:
 
         # Make more changes
         await state_manager.toggle_autopilot()
-        await state_manager.set_ai_model(AIModel.GPT4)
+        await state_manager.set_ai_model(AIModel.GEMINI_PRO)
 
         # Should still only have one update
         assert collector.call_count == 1
@@ -337,7 +337,7 @@ class TestStatePersistence:
             {
                 "current_project_id": project_id,
                 "autopilot_enabled": True,
-                "selected_ai_model": AIModel.GPT4,
+                "selected_ai_model": AIModel.GEMINI_PRO,
                 "ui_preferences": {"theme": "dark"},
             }
         )
@@ -348,7 +348,7 @@ class TestStatePersistence:
 
         assert state_data["current_project_id"] == str(project_id)
         assert state_data["autopilot_enabled"] is True
-        assert state_data["selected_ai_model"] == AIModel.GPT4
+        assert state_data["selected_ai_model"] == AIModel.GEMINI_PRO
         assert state_data["ui_preferences"] == {"theme": "dark"}
 
     async def test_state_loaded_from_file(
@@ -361,7 +361,7 @@ class TestStatePersistence:
         state_data = {
             "current_project_id": str(project_id),
             "autopilot_enabled": True,
-            "selected_ai_model": AIModel.GPT4,
+            "selected_ai_model": AIModel.GEMINI_PRO,
             "ui_preferences": {"theme": "light", "font_size": 12},
         }
         temp_state_file.write_text(json.dumps(state_data))
@@ -372,7 +372,7 @@ class TestStatePersistence:
         state = manager.get_state()
         assert state.current_project_id == project_id
         assert state.autopilot_enabled is True
-        assert state.selected_ai_model == AIModel.GPT4
+        assert state.selected_ai_model == AIModel.GEMINI_PRO
         assert state.ui_preferences == {"theme": "light", "font_size": 12}
 
     async def test_corrupt_state_file_handled(
@@ -388,7 +388,7 @@ class TestStatePersistence:
         state = manager.get_state()
         assert state.current_project_id is None
         assert state.autopilot_enabled is False
-        assert state.selected_ai_model == AIModel.CLAUDE
+        assert state.selected_ai_model == AIModel.GEMINI_FLASH
 
 
 class TestConcurrentUpdates:
@@ -413,5 +413,5 @@ class TestConcurrentUpdates:
         # Verify final state
         state = state_manager.get_state()
         assert state.autopilot_enabled is True
-        assert state.selected_ai_model == AIModel.GPT4
+        assert state.selected_ai_model == AIModel.GEMINI_PRO
         assert state.ui_preferences == {"theme": "dark"}
