@@ -95,7 +95,15 @@ class ProjectSelector(Widget):
         Args:
             projects: List of projects to display
         """
-        self.projects = projects
+        # Remove any duplicate projects (by ID) to prevent DuplicateIds error
+        seen_ids = set()
+        unique_projects = []
+        for project in projects:
+            if project.id not in seen_ids:
+                seen_ids.add(project.id)
+                unique_projects.append(project)
+        
+        self.projects = unique_projects
 
         if self.project_list is None:
             return
@@ -103,10 +111,14 @@ class ProjectSelector(Widget):
         # Clear existing items by removing all children
         self.project_list.clear()
 
-        # Create ListItems for each project
+        # Create ListItems for each project with unique widget IDs
         items = []
-        for project in projects:
+        for i, project in enumerate(unique_projects):
             project_item = self._create_project_item(project)
+            # Ensure unique widget ID even if project IDs somehow collide
+            # Use index as fallback to guarantee uniqueness
+            if project_item.id in [item.id for item in items]:
+                project_item.id = f"project-{project.id}-{i}"
             items.append(project_item)
 
         # Add all items at once

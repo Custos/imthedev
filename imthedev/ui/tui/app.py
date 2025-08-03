@@ -68,9 +68,9 @@ class ImTheDevApp(App):
                 self.project_selector = ProjectSelector(id="project-selector")
                 yield self.project_selector
 
-            # Center panel: Command dashboard
+            # Center panel: Enhanced Command dashboard with Gemini-first approach
             with Vertical(id="center-panel"):
-                yield Static("[bold]Command Workflow[/bold]", id="workflow-header")
+                yield Static("[bold]AI Command Generation - Powered by Gemini[/bold]", id="workflow-header")
                 self.command_dashboard = CommandDashboard(id="command-dashboard")
                 yield self.command_dashboard
 
@@ -120,15 +120,30 @@ class ImTheDevApp(App):
 
         # Add to project selector
         if self.project_selector:
+            # Get current projects and ensure we have a fresh list
             current_projects = (
                 list(self.project_selector.projects)
                 if self.project_selector.projects
                 else []
             )
+            
+            # Create new project
             new_project = Project.create(
                 name=new_project_name,
                 path=Path(new_project_path),
             )
+            
+            # Check for duplicate IDs (shouldn't happen with UUID4, but be safe)
+            existing_ids = {p.id for p in current_projects}
+            if new_project.id in existing_ids:
+                # This should be extremely rare with UUID4
+                self.log(f"WARNING: Duplicate project ID detected, regenerating...")
+                # Regenerate the project with a new ID
+                new_project = Project.create(
+                    name=new_project_name,
+                    path=Path(new_project_path),
+                )
+            
             current_projects.append(new_project)
             self.project_selector.update_projects(current_projects)
 
@@ -261,26 +276,27 @@ imthedev Help:
         Args:
             message: The command submitted message
         """
-        self.log(f"Command submitted: {message.command} (ID: {message.command_id})")
+        self.log(f"Command submitted via {message.model}: {message.command} (ID: {message.command_id})")
 
         # Set as pending in approval controls
         if self.approval_controls:
             self.approval_controls.set_pending_command(message.command_id)
 
-    def on_command_dashboard_command_cleared(
-        self, message: CommandDashboard.CommandCleared
+    def on_command_dashboard_command_generated(
+        self, message: CommandDashboard.CommandGenerated
     ) -> None:
-        """Handle command clearing from the CommandDashboard.
+        """Handle command generation from the CommandDashboard.
 
         Args:
-            message: The command cleared message
+            message: The command generated message
         """
-        del message  # Currently unused
-        self.log("Command cleared")
-
-        # Clear pending command in approval controls
+        self.log(f"Command generated using {message.model}: {message.command}")
+        self.log(f"AI Reasoning: {message.reasoning}")
+        
+        # Set pending command in approval controls
         if self.approval_controls:
-            self.approval_controls.set_pending_command(None)
+            command_id = str(uuid4())
+            self.approval_controls.set_pending_command(command_id)
 
     def on_approval_controls_command_approved(
         self, message: ApprovalControls.CommandApproved
