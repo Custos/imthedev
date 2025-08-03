@@ -112,24 +112,19 @@ class ImTheDevApp(App):
         # Set initial focus to project selector
         if self.project_selector:
             self.project_selector.focus()
-            
-            # Subscribe to project events
-            self.project_selector.ProjectCreated.subscribe(self.on_project_created)
-            self.project_selector.ProjectUpdated.subscribe(self.on_project_updated)
-            self.project_selector.ProjectDeleted.subscribe(self.on_project_deleted)
 
         self.log("ImTheDevApp initialized and ready")
     
-    def on_project_created(self, message: ProjectSelector.ProjectCreated) -> None:
-        """Handle project creation."""
+    def on_project_selector_project_created(self, message: ProjectSelector.ProjectCreated) -> None:
+        """Handle project creation from ProjectSelector."""
         self.log(f"Project created: {message.project.name} at {message.project.path}")
     
-    def on_project_updated(self, message: ProjectSelector.ProjectUpdated) -> None:
-        """Handle project update."""
+    def on_project_selector_project_updated(self, message: ProjectSelector.ProjectUpdated) -> None:
+        """Handle project update from ProjectSelector."""
         self.log(f"Project updated: {message.project.name}")
     
-    def on_project_deleted(self, message: ProjectSelector.ProjectDeleted) -> None:
-        """Handle project deletion."""
+    def on_project_selector_project_deleted(self, message: ProjectSelector.ProjectDeleted) -> None:
+        """Handle project deletion from ProjectSelector."""
         self.log(f"Project deleted: {message.project_id}")
 
     def action_new_project(self) -> None:
