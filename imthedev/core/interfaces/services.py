@@ -25,6 +25,9 @@ class AIModel:
     CLAUDE_INSTANT = "claude-instant"
     GPT4 = "gpt-4"
     GPT35_TURBO = "gpt-3.5-turbo"
+    GEMINI_FLASH = "gemini-2.5-flash"
+    GEMINI_PRO = "gemini-2.5-pro"
+    GEMINI_FLASH_8B = "gemini-2.5-flash-8b"
 
 
 class CommandAnalysis:

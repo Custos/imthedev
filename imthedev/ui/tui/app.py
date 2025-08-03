@@ -19,6 +19,7 @@ from imthedev.ui.tui.components.approval_controls import ApprovalControls
 from imthedev.ui.tui.components.command_dashboard import CommandDashboard
 from imthedev.ui.tui.components.configuration_screen import ConfigurationScreen
 from imthedev.ui.tui.components.project_selector import ProjectSelector
+from imthedev.core.services.project_persistence import ProjectPersistenceService
 
 
 class ImTheDevApp(App):
@@ -84,68 +85,59 @@ class ImTheDevApp(App):
 
     def on_mount(self) -> None:
         """Called when the app is mounted. Initialize with sample data."""
-        # Initialize with sample projects
-        sample_projects = [
-            Project.create(
-                name="Web App Project",
-                path=Path("~/projects/webapp"),
-            ),
-            Project.create(
-                name="API Service",
-                path=Path("~/projects/api"),
-            ),
-            Project.create(
-                name="ML Pipeline",
-                path=Path("~/projects/ml-pipeline"),
-            ),
-        ]
-
+        # Load projects from disk or initialize with sample
         if self.project_selector:
-            self.project_selector.update_projects(sample_projects)
+            # Try to load existing projects
+            self.project_selector.load_projects_from_disk()
+            
+            # If no projects found, create sample projects
+            if self.project_selector.get_project_count() == 0:
+                self.log("No projects found, creating sample projects...")
+                sample_projects = [
+                    Project.create(
+                        name="Web App Project",
+                        path=Path("~/projects/webapp").expanduser(),
+                    ),
+                    Project.create(
+                        name="API Service",
+                        path=Path("~/projects/api").expanduser(),
+                    ),
+                    Project.create(
+                        name="ML Pipeline",
+                        path=Path("~/projects/ml-pipeline").expanduser(),
+                    ),
+                ]
+                self.project_selector.update_projects(sample_projects)
 
         # Set initial focus to project selector
         if self.project_selector:
             self.project_selector.focus()
+            
+            # Subscribe to project events
+            self.project_selector.ProjectCreated.subscribe(self.on_project_created)
+            self.project_selector.ProjectUpdated.subscribe(self.on_project_updated)
+            self.project_selector.ProjectDeleted.subscribe(self.on_project_deleted)
 
         self.log("ImTheDevApp initialized and ready")
+    
+    def on_project_created(self, message: ProjectSelector.ProjectCreated) -> None:
+        """Handle project creation."""
+        self.log(f"Project created: {message.project.name} at {message.project.path}")
+    
+    def on_project_updated(self, message: ProjectSelector.ProjectUpdated) -> None:
+        """Handle project update."""
+        self.log(f"Project updated: {message.project.name}")
+    
+    def on_project_deleted(self, message: ProjectSelector.ProjectDeleted) -> None:
+        """Handle project deletion."""
+        self.log(f"Project deleted: {message.project_id}")
 
     def action_new_project(self) -> None:
         """Handle the new project action."""
-        # Generate a new dummy project
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        new_project_name = f"New Project {timestamp}"
-        new_project_path = f"~/projects/new_{timestamp}"
-
-        self.log(f"Creating new project: {new_project_name}")
-
-        # Add to project selector
+        # Delegate to the ProjectSelector's new project action
         if self.project_selector:
-            # Get current projects and ensure we have a fresh list
-            current_projects = (
-                list(self.project_selector.projects)
-                if self.project_selector.projects
-                else []
-            )
-            
-            # Create new project
-            new_project = Project.create(
-                name=new_project_name,
-                path=Path(new_project_path),
-            )
-            
-            # Check for duplicate IDs (shouldn't happen with UUID4, but be safe)
-            existing_ids = {p.id for p in current_projects}
-            if new_project.id in existing_ids:
-                # This should be extremely rare with UUID4
-                self.log(f"WARNING: Duplicate project ID detected, regenerating...")
-                # Regenerate the project with a new ID
-                new_project = Project.create(
-                    name=new_project_name,
-                    path=Path(new_project_path),
-                )
-            
-            current_projects.append(new_project)
-            self.project_selector.update_projects(current_projects)
+            self.project_selector.action_new_project()
+            self.log("Opening new project dialog...")
 
     def action_toggle_project_list(self) -> None:
         """Toggle visibility of the project list."""

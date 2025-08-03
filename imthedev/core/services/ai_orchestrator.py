@@ -491,6 +491,8 @@ class AIOrchestratorImpl(AIOrchestrator):
         AIModel.GPT4: OpenAIAdapter,
         AIModel.GPT35_TURBO: OpenAIAdapter,
     }
+    
+    # Note: Gemini adapters will be registered dynamically to avoid import issues
 
     def __init__(self, event_bus: EventBus) -> None:
         """Initialize the AI orchestrator.
@@ -523,6 +525,24 @@ class AIOrchestratorImpl(AIOrchestrator):
             self._adapters[AIModel.GPT35_TURBO] = OpenAIAdapter(
                 api_key=openai_key, model_name="gpt-3.5-turbo"
             )
+        
+        # Initialize Gemini adapters
+        gemini_key = os.environ.get("GEMINI_API_KEY")
+        if gemini_key:
+            try:
+                from imthedev.core.services.gemini_adapter import GeminiAdapter
+                
+                self._adapters[AIModel.GEMINI_FLASH] = GeminiAdapter(
+                    api_key=gemini_key, model_name="gemini-2.5-flash"
+                )
+                self._adapters[AIModel.GEMINI_PRO] = GeminiAdapter(
+                    api_key=gemini_key, model_name="gemini-2.5-pro"
+                )
+                self._adapters[AIModel.GEMINI_FLASH_8B] = GeminiAdapter(
+                    api_key=gemini_key, model_name="gemini-2.5-flash-8b"
+                )
+            except ImportError:
+                logger.warning("GeminiAdapter not available - Google AI SDK may not be installed")
 
         logger.info(f"Initialized adapters for models: {list(self._adapters.keys())}")
 
