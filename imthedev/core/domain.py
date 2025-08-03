@@ -87,7 +87,7 @@ class ProjectSettings:
     """
 
     auto_approve: bool = False
-    default_ai_model: str = "gemini-2.5-flash"
+    default_ai_model: str = "gemini-2.5-pro"
     command_timeout: int = 300
     environment_vars: dict[str, str] = field(default_factory=dict)
 

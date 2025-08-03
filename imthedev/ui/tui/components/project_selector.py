@@ -14,7 +14,7 @@ from textual.message import Message
 from textual.widget import Widget
 from textual.widgets import Button, Input, Label, ListItem, ListView, Static
 
-from imthedev.core.domain import Project
+from imthedev.core.domain import Project, ProjectContext, ProjectSettings
 from imthedev.core.services.project_persistence import ProjectPersistenceService
 
 
