@@ -56,14 +56,8 @@ class StorageConfig:
 class AIConfig:
     """AI provider configuration settings."""
 
-    default_model: str = "claude"
+    default_model: str = "gemini-2.5-flash"
     """Default AI model to use"""
-
-    claude_api_key: str | None = None
-    """Claude API key (loaded from environment)"""
-
-    openai_api_key: str | None = None
-    """OpenAI API key (loaded from environment)"""
     
     gemini_api_key: str | None = None
     """Google Gemini API key (loaded from environment)"""
@@ -222,14 +216,10 @@ class AppConfig:
         errors = []
 
         # Validate AI configuration
-        if not self.ai.claude_api_key and not self.ai.openai_api_key and not self.ai.gemini_api_key:
-            errors.append("At least one AI API key must be configured")
+        if not self.ai.gemini_api_key:
+            errors.append("Gemini API key must be configured")
 
         if self.ai.default_model not in [
-            "claude",
-            "claude-instant",
-            "gpt-4",
-            "gpt-3.5-turbo",
             "gemini-2.5-flash",
             "gemini-2.5-pro",
             "gemini-2.5-flash-8b",
@@ -424,16 +414,11 @@ class ConfigManager:
             ),
             # AI settings
             "IMTHEDEV_AI_DEFAULT_MODEL": ("ai", "default_model"),
-            "IMTHEDEV_AI_CLAUDE_API_KEY": ("ai", "claude_api_key"),
-            "IMTHEDEV_AI_OPENAI_API_KEY": ("ai", "openai_api_key"),
             "IMTHEDEV_AI_GEMINI_API_KEY": ("ai", "gemini_api_key"),
             "IMTHEDEV_AI_GEMINI_MODEL": ("ai", "gemini_model"),
             "IMTHEDEV_AI_REQUEST_TIMEOUT": ("ai", "request_timeout", int),
             "IMTHEDEV_AI_MAX_RETRIES": ("ai", "max_retries", int),
             # Alternative API key names (common environment variable names)
-            "CLAUDE_API_KEY": ("ai", "claude_api_key"),
-            "OPENAI_API_KEY": ("ai", "openai_api_key"),
-            "ANTHROPIC_API_KEY": ("ai", "claude_api_key"),
             "GEMINI_API_KEY": ("ai", "gemini_api_key"),
             "GOOGLE_API_KEY": ("ai", "gemini_api_key"),
             # UI settings
@@ -530,16 +515,12 @@ class ConfigManager:
 # Choose one of these methods:
 #
 # Option 1: Environment Variables (Recommended)
-#   export CLAUDE_API_KEY='your-claude-api-key-here'
-#   export OPENAI_API_KEY='your-openai-api-key-here'
 #   export GEMINI_API_KEY='your-gemini-api-key-here'
 #
 # Option 2: Configuration File
-#   Uncomment and set the API keys below in the [ai] section
+#   Uncomment and set the API key below in the [ai] section
 #
-# To get API keys:
-#   - Claude: https://console.anthropic.com/
-#   - OpenAI: https://platform.openai.com/api-keys
+# To get API key:
 #   - Gemini: https://aistudio.google.com/app/apikey
 # ============================================================================
 
@@ -562,20 +543,16 @@ compress_backups = true
 
 [ai]
 # AI provider configuration
-# REQUIRED: At least one API key must be configured!
-default_model = "claude"  # Options: claude, claude-instant, gpt-4, gpt-3.5-turbo, gemini-2.5-flash, gemini-2.5-pro, gemini-2.5-flash-8b
+# REQUIRED: Gemini API key must be configured!
+default_model = "gemini-2.5-flash"  # Options: gemini-2.5-flash, gemini-2.5-pro, gemini-2.5-flash-8b
 
-# Uncomment ONE OR MORE of the following lines and add your API key:
-# claude_api_key = "sk-ant-..."  # Get from https://console.anthropic.com/
-# openai_api_key = "sk-..."      # Get from https://platform.openai.com/api-keys
+# Uncomment the following line and add your API key:
 # gemini_api_key = "..."         # Get from https://aistudio.google.com/app/apikey
 
 # Gemini-specific settings
 gemini_model = "gemini-2.5-flash"  # Options: gemini-2.5-flash, gemini-2.5-pro, gemini-2.5-flash-8b
 
 # Note: Using environment variables is more secure than storing keys in this file:
-#   export CLAUDE_API_KEY='your-key-here'
-#   export OPENAI_API_KEY='your-key-here'
 #   export GEMINI_API_KEY='your-key-here'
 
 request_timeout = 30

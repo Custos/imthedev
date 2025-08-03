@@ -12,7 +12,7 @@ imthedev provides a central hub for orchestrating AI-driven development tasks ac
 - **Context Persistence**: Maintain project-specific context and history across sessions
 - **Command Transparency**: Display AI reasoning and allow approval/rejection of proposed commands
 - **Keyboard Efficiency**: Fully keyboard-navigable interface for power users
-- **Multi-Model Support**: Work with Claude, OpenAI, and future AI models
+- **Gemini AI Integration**: Powered by Google's Gemini models for command generation
 - **Autopilot Mode**: Continuous auto-approved execution for trusted workflows
 
 ## Installation
@@ -32,12 +32,15 @@ pip install -e ".[dev]"
 
 ## Configuration
 
-Set up your AI provider API keys:
+Set up your Google Gemini API key:
 
 ```bash
-export CLAUDE_API_KEY="your-claude-api-key"
-export OPENAI_API_KEY="your-openai-api-key"
+export GEMINI_API_KEY="your-gemini-api-key"
+# or
+export GOOGLE_API_KEY="your-google-api-key"
 ```
+
+Get your API key from: https://aistudio.google.com/app/apikey
 
 ## Usage
 

@@ -21,10 +21,6 @@ from imthedev.core.domain import (
 class AIModel:
     """Enumeration of supported AI models."""
 
-    CLAUDE = "claude"
-    CLAUDE_INSTANT = "claude-instant"
-    GPT4 = "gpt-4"
-    GPT35_TURBO = "gpt-3.5-turbo"
     GEMINI_FLASH = "gemini-2.5-flash"
     GEMINI_PRO = "gemini-2.5-pro"
     GEMINI_FLASH_8B = "gemini-2.5-flash-8b"
@@ -214,7 +210,7 @@ class AIOrchestrator(Protocol):
     """Service for orchestrating AI interactions and command generation."""
 
     async def generate_command(
-        self, context: ProjectContext, objective: str, model: str = AIModel.CLAUDE
+        self, context: ProjectContext, objective: str, model: str = AIModel.GEMINI_FLASH
     ) -> tuple[str, str]:
         """Generate a command based on context and objective.
 
@@ -357,7 +353,7 @@ class ApplicationState:
         self,
         current_project_id: UUID | None = None,
         autopilot_enabled: bool = False,
-        selected_ai_model: str = AIModel.CLAUDE,
+        selected_ai_model: str = AIModel.GEMINI_FLASH,
         ui_preferences: dict[str, Any] | None = None,
     ):
         self.current_project_id = current_project_id

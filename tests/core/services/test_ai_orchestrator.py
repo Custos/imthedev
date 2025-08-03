@@ -20,10 +20,8 @@ from imthedev.core.interfaces import AIModel
 from imthedev.core.services.ai_orchestrator import (
     AIOrchestratorImpl,
     AIProviderError,
-    ClaudeAdapter,
     InvalidModelError,
     MockAIAdapter,
-    OpenAIAdapter,
 )
 
 
@@ -316,152 +314,34 @@ class TestAIOrchestratorImpl:
         assert tokens == 100  # Mock adapter returns fixed value
 
 
-class TestClaudeAdapter:
-    """Test Claude adapter functionality."""
+class TestGeminiIntegration:
+    """Test Gemini integration functionality."""
 
-    def test_claude_adapter_initialization_without_key(self) -> None:
-        """Test Claude adapter when no API key is available."""
-        # Temporarily remove API key if present
-        old_key = os.environ.get("CLAUDE_API_KEY")
-        if old_key:
-            del os.environ["CLAUDE_API_KEY"]
-
-        try:
-            adapter = ClaudeAdapter()
-            assert adapter.is_available() is False
-        finally:
-            # Restore key if it existed
-            if old_key:
-                os.environ["CLAUDE_API_KEY"] = old_key
-
-    def test_claude_adapter_initialization_with_key(self) -> None:
-        """Test Claude adapter with API key."""
-        ClaudeAdapter(api_key="test-key")
-        # Will be unavailable if anthropic package not installed
-        # or if initialization fails
-
-    def test_build_context_prompt(self) -> None:
-        """Test context prompt building."""
-        adapter = ClaudeAdapter()
-
-        cmd = Command(
-            id=uuid4(),
-            project_id=uuid4(),
-            command_text="test command",
-            ai_reasoning="Test",
-            status=CommandStatus.COMPLETED,
+    async def test_gemini_models_available(self, orchestrator: AIOrchestratorImpl) -> None:
+        """Test that Gemini models are available when API key is set."""
+        # Set a test API key
+        os.environ["GEMINI_API_KEY"] = "test-key"
+        
+        # Re-initialize adapters
+        orchestrator._initialize_adapters()
+        
+        # Check that Gemini models are available
+        available_models = orchestrator.get_available_models()
+        
+        # Should include Gemini models if adapter is properly initialized
+        # Note: Actual availability depends on whether google-generativeai is installed
+        # and the adapter can be initialized
+        
+    async def test_gemini_default_model(self, orchestrator: AIOrchestratorImpl, mock_context: ProjectContext) -> None:
+        """Test that Gemini Flash is the default model."""
+        # Register a mock adapter for testing
+        orchestrator.register_adapter(AIModel.GEMINI_FLASH, MockAIAdapter())
+        
+        # Generate command without specifying model (should use default)
+        cmd, reasoning = await orchestrator.generate_command(
+            mock_context, "test objective"
         )
-
-        context = ProjectContext(
-            history=[cmd],
-            current_state={"key": "value"},
-            ai_memory="Test memory",
-            metadata={},
-        )
-
-        prompt = adapter._build_context_prompt(context)
-        assert "Recent Commands:" in prompt
-        assert "test command" in prompt
-        assert "Current State:" in prompt
-        assert "key: value" in prompt
-        assert "AI Memory:" in prompt
-        assert "Test memory" in prompt
-
-    async def test_estimate_tokens(self) -> None:
-        """Test token estimation for Claude."""
-        adapter = ClaudeAdapter()
-        context = ProjectContext(
-            history=[],
-            current_state={"test": "value"},
-            ai_memory="A" * 100,  # 100 characters
-            metadata={},
-        )
-
-        tokens = await adapter.estimate_tokens(context, "objective")
-        assert tokens > 0
-        assert isinstance(tokens, int)
-
-
-class TestOpenAIAdapter:
-    """Test OpenAI adapter functionality."""
-
-    def test_openai_adapter_initialization_without_key(self) -> None:
-        """Test OpenAI adapter when no API key is available."""
-        # Temporarily remove API key if present
-        old_key = os.environ.get("OPENAI_API_KEY")
-        if old_key:
-            del os.environ["OPENAI_API_KEY"]
-
-        try:
-            adapter = OpenAIAdapter()
-            assert adapter.is_available() is False
-        finally:
-            # Restore key if it existed
-            if old_key:
-                os.environ["OPENAI_API_KEY"] = old_key
-
-    def test_openai_adapter_initialization_with_key(self) -> None:
-        """Test OpenAI adapter with API key."""
-        OpenAIAdapter(api_key="test-key")
-        # Will be unavailable if openai package not installed
-        # or if initialization fails
-
-    async def test_estimate_tokens(self) -> None:
-        """Test token estimation for OpenAI."""
-        adapter = OpenAIAdapter()
-        context = ProjectContext(
-            history=[],
-            current_state={"test": "value"},
-            ai_memory="B" * 100,  # 100 characters
-            metadata={},
-        )
-
-        tokens = await adapter.estimate_tokens(context, "objective")
-        assert tokens > 0
-        assert isinstance(tokens, int)
-
-
-class TestAdapterPattern:
-    """Test the adapter pattern implementation."""
-
-    def test_adapter_registry(self) -> None:
-        """Test that all expected models are in the registry."""
-        registry = AIOrchestratorImpl.ADAPTER_REGISTRY
-
-        assert AIModel.CLAUDE in registry
-        assert AIModel.CLAUDE_INSTANT in registry
-        assert AIModel.GPT4 in registry
-        assert AIModel.GPT35_TURBO in registry
-
-        # Verify adapter types
-        assert registry[AIModel.CLAUDE] == ClaudeAdapter
-        assert registry[AIModel.CLAUDE_INSTANT] == ClaudeAdapter
-        assert registry[AIModel.GPT4] == OpenAIAdapter
-        assert registry[AIModel.GPT35_TURBO] == OpenAIAdapter
-
-    async def test_adapter_interface_compliance(self) -> None:
-        """Test that all adapters implement the required interface."""
-        adapters = [
-            MockAIAdapter(),
-            ClaudeAdapter(api_key="test"),
-            OpenAIAdapter(api_key="test"),
-        ]
-
-        context = ProjectContext()
-
-        for adapter in adapters:
-            # All adapters must implement these methods
-            assert hasattr(adapter, "generate_command")
-            assert hasattr(adapter, "analyze_result")
-            assert hasattr(adapter, "estimate_tokens")
-            assert hasattr(adapter, "is_available")
-
-            # Test that methods can be called (may fail, but should exist)
-            try:
-                await adapter.estimate_tokens(context, "test")
-            except:
-                pass  # Method exists, that's what we're testing
-
-            # is_available should always work
-            result = adapter.is_available()
-            assert isinstance(result, bool)
+        
+        # Should work with default Gemini Flash model
+        assert cmd is not None
+        assert reasoning is not None

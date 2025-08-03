@@ -46,7 +46,7 @@ class TestAppConfig:
 
         # Test specific defaults
         assert config.database.path == "imthedev.db"
-        assert config.ai.default_model == "claude"
+        assert config.ai.default_model == "gemini-2.5-flash"
         assert config.ui.theme == "dark"
         assert config.logging.level == "INFO"
 
@@ -86,7 +86,7 @@ class TestAppConfig:
     def test_validation_success(self) -> None:
         """Test successful configuration validation."""
         config = AppConfig()
-        config.ai.claude_api_key = "test-key"
+        config.ai.gemini_api_key = "test-key"
 
         errors = config.validate()
         assert errors == []
@@ -96,12 +96,12 @@ class TestAppConfig:
         config = AppConfig()
 
         errors = config.validate()
-        assert "At least one AI API key must be configured" in errors
+        assert "Gemini API key must be configured" in errors
 
     def test_validation_invalid_model(self) -> None:
         """Test validation failure for invalid AI model."""
         config = AppConfig()
-        config.ai.claude_api_key = "test-key"
+        config.ai.gemini_api_key = "test-key"
         config.ai.default_model = "invalid-model"
 
         errors = config.validate()
@@ -110,7 +110,7 @@ class TestAppConfig:
     def test_validation_invalid_theme(self) -> None:
         """Test validation failure for invalid UI theme."""
         config = AppConfig()
-        config.ai.claude_api_key = "test-key"
+        config.ai.gemini_api_key = "test-key"
         config.ui.theme = "invalid-theme"
 
         errors = config.validate()
@@ -119,7 +119,7 @@ class TestAppConfig:
     def test_validation_invalid_logging_level(self) -> None:
         """Test validation failure for invalid logging level."""
         config = AppConfig()
-        config.ai.claude_api_key = "test-key"
+        config.ai.gemini_api_key = "test-key"
         config.logging.level = "INVALID"
 
         errors = config.validate()
@@ -128,7 +128,7 @@ class TestAppConfig:
     def test_validation_negative_values(self) -> None:
         """Test validation failure for negative numeric values."""
         config = AppConfig()
-        config.ai.claude_api_key = "test-key"
+        config.ai.gemini_api_key = "test-key"
         config.database.timeout = -1
         config.storage.max_context_history = 0
         config.ai.request_timeout = -5
@@ -150,13 +150,13 @@ class TestConfigManager:
             config_file = Path(temp_dir) / "nonexistent.toml"
 
             # Mock API key to pass validation
-            with patch.dict(os.environ, {"CLAUDE_API_KEY": "test-key"}):
+            with patch.dict(os.environ, {"GEMINI_API_KEY": "test-key"}):
                 manager = ConfigManager(str(config_file))
                 config = manager.load_config()
 
                 assert isinstance(config, AppConfig)
                 assert config.debug is False
-                assert config.ai.default_model == "claude"
+                assert config.ai.default_model == "gemini-2.5-flash"
 
     def test_load_config_from_toml_file(self) -> None:
         """Test loading configuration from TOML file."""
@@ -172,7 +172,7 @@ context_dir = "~/custom/contexts"
 backup_dir = "~/custom/backups"
 
 [ai]
-default_model = "gpt-4"
+default_model = "gemini-2.5-pro"
 request_timeout = 45
 
 [ui]
@@ -190,7 +190,7 @@ file_path = "~/custom/logs/app.log"
 
         try:
             # Mock API key to pass validation
-            with patch.dict(os.environ, {"CLAUDE_API_KEY": "test-key"}):
+            with patch.dict(os.environ, {"GEMINI_API_KEY": "test-key"}):
                 manager = ConfigManager(config_file)
                 config = manager.load_config()
 
@@ -198,7 +198,7 @@ file_path = "~/custom/logs/app.log"
                 assert config.debug is True
                 assert config.database.path == "/custom/db.sqlite"
                 assert config.database.timeout == 60
-                assert config.ai.default_model == "gpt-4"
+                assert config.ai.default_model == "gemini-2.5-pro"
                 assert config.ai.request_timeout == 45
                 assert config.ui.theme == "light"
                 assert config.ui.autopilot_enabled is True
@@ -222,10 +222,9 @@ file_path = "~/custom/logs/app.log"
             "IMTHEDEV_DEBUG": "true",
             "IMTHEDEV_DATABASE_PATH": "/env/db.sqlite",
             "IMTHEDEV_DATABASE_TIMEOUT": "120",
-            "IMTHEDEV_AI_DEFAULT_MODEL": "gpt-3.5-turbo",
+            "IMTHEDEV_AI_DEFAULT_MODEL": "gemini-2.5-flash-8b",
             "IMTHEDEV_AI_REQUEST_TIMEOUT": "90",
-            "CLAUDE_API_KEY": "env-claude-key",
-            "OPENAI_API_KEY": "env-openai-key",
+            "GEMINI_API_KEY": "env-gemini-key",
             "IMTHEDEV_UI_THEME": "auto",
             "IMTHEDEV_UI_AUTOPILOT_ENABLED": "true",
             "IMTHEDEV_LOGGING_LEVEL": "WARNING",
@@ -239,10 +238,9 @@ file_path = "~/custom/logs/app.log"
             assert config.debug is True
             assert config.database.path == "/env/db.sqlite"
             assert config.database.timeout == 120
-            assert config.ai.default_model == "gpt-3.5-turbo"
+            assert config.ai.default_model == "gemini-2.5-flash-8b"
             assert config.ai.request_timeout == 90
-            assert config.ai.claude_api_key == "env-claude-key"
-            assert config.ai.openai_api_key == "env-openai-key"
+            assert config.ai.gemini_api_key == "env-gemini-key"
             assert config.ui.theme == "auto"
             assert config.ui.autopilot_enabled is True
             assert config.logging.level == "WARNING"
@@ -268,7 +266,7 @@ file_path = "~/custom/logs/app.log"
                 os.environ,
                 {
                     "IMTHEDEV_DEBUG": env_value,
-                    "CLAUDE_API_KEY": "test-key",  # Add API key for validation
+                    "GEMINI_API_KEY": "test-key",  # Add API key for validation
                 },
             ):
                 manager = ConfigManager()
@@ -282,7 +280,7 @@ file_path = "~/custom/logs/app.log"
             {
                 "IMTHEDEV_DATABASE_TIMEOUT": "300",
                 "IMTHEDEV_AI_MAX_RETRIES": "5",
-                "CLAUDE_API_KEY": "test-key",  # Add API key for validation
+                "GEMINI_API_KEY": "test-key",  # Add API key for validation
             },
         ):
             manager = ConfigManager()
@@ -294,18 +292,16 @@ file_path = "~/custom/logs/app.log"
     def test_alternative_api_key_environment_variables(self) -> None:
         """Test that common API key environment variable names work."""
         env_vars = {
-            "CLAUDE_API_KEY": "claude-from-standard-env",
-            "ANTHROPIC_API_KEY": "claude-from-anthropic-env",
-            "OPENAI_API_KEY": "openai-from-standard-env",
+            "GEMINI_API_KEY": "gemini-from-standard-env",
+            "GOOGLE_API_KEY": "gemini-from-google-env",
         }
 
         with patch.dict(os.environ, env_vars):
             manager = ConfigManager()
             config = manager.load_config()
 
-            # ANTHROPIC_API_KEY should override CLAUDE_API_KEY due to order in mapping
-            assert config.ai.claude_api_key == "claude-from-anthropic-env"
-            assert config.ai.openai_api_key == "openai-from-standard-env"
+            # GOOGLE_API_KEY should override GEMINI_API_KEY due to order in mapping
+            assert config.ai.gemini_api_key == "gemini-from-google-env"
 
     def test_config_validation_error(self) -> None:
         """Test that validation errors raise ConfigurationError."""
@@ -420,7 +416,7 @@ default_model = "invalid-model"
 timeout = 30
 
 [ai]
-default_model = "claude"
+default_model = "gemini-2.5-flash"
 """
 
         with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:
@@ -431,8 +427,8 @@ default_model = "claude"
             # Environment variables should override TOML values
             env_vars = {
                 "IMTHEDEV_DATABASE_TIMEOUT": "60",
-                "IMTHEDEV_AI_DEFAULT_MODEL": "gpt-4",
-                "CLAUDE_API_KEY": "test-key",  # Add API key for validation
+                "IMTHEDEV_AI_DEFAULT_MODEL": "gemini-2.5-pro",
+                "GEMINI_API_KEY": "test-key",  # Add API key for validation
             }
 
             with patch.dict(os.environ, env_vars):
@@ -442,8 +438,8 @@ default_model = "claude"
                 # Environment variables should take precedence
                 assert config.database.timeout == 60  # From env, not 30 from TOML
                 assert (
-                    config.ai.default_model == "gpt-4"
-                )  # From env, not 'claude' from TOML
+                    config.ai.default_model == "gemini-2.5-pro"
+                )  # From env, not 'gemini-2.5-flash' from TOML
         finally:
             os.unlink(config_file)
 
@@ -453,7 +449,7 @@ default_model = "claude"
 debug = true
 
 [ai]
-default_model = "gpt-4"
+default_model = "gemini-2.5-pro"
 
 [ui]
 theme = "light"
@@ -464,13 +460,13 @@ theme = "light"
             config_file = f.name
 
         try:
-            with patch.dict(os.environ, {"CLAUDE_API_KEY": "test-key"}):
+            with patch.dict(os.environ, {"GEMINI_API_KEY": "test-key"}):
                 manager = ConfigManager(config_file)
                 config = manager.load_config()
 
                 # Specified values should be from TOML
                 assert config.debug is True
-                assert config.ai.default_model == "gpt-4"
+                assert config.ai.default_model == "gemini-2.5-pro"
                 assert config.ui.theme == "light"
 
                 # Unspecified values should be defaults
@@ -511,9 +507,8 @@ class TestConfigurationSections:
         """Test AIConfig default values."""
         config = AIConfig()
 
-        assert config.default_model == "claude"
-        assert config.claude_api_key is None
-        assert config.openai_api_key is None
+        assert config.default_model == "gemini-2.5-flash"
+        assert config.gemini_api_key is None
         assert config.request_timeout == 30
         assert config.max_retries == 3
         assert config.retry_delay == 1.0

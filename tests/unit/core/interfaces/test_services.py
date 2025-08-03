@@ -117,14 +117,13 @@ class MockAIOrchestrator:
 
     def __init__(self):
         self.available_models = [
-            AIModel.CLAUDE,
-            AIModel.CLAUDE_INSTANT,
-            AIModel.GPT4,
-            AIModel.GPT35_TURBO,
+            AIModel.GEMINI_FLASH,
+            AIModel.GEMINI_PRO,
+            AIModel.GEMINI_FLASH_8B,
         ]
 
     async def generate_command(
-        self, context: ProjectContext, objective: str, model: str = AIModel.CLAUDE
+        self, context: ProjectContext, objective: str, model: str = AIModel.GEMINI_FLASH
     ) -> tuple[str, str]:
         # Simple mock logic for testing
         if "git" in objective.lower():
@@ -259,10 +258,9 @@ class MockStateManager:
 
     async def set_ai_model(self, model: str) -> None:
         valid_models = [
-            AIModel.CLAUDE,
-            AIModel.CLAUDE_INSTANT,
-            AIModel.GPT4,
-            AIModel.GPT35_TURBO,
+            AIModel.GEMINI_FLASH,
+            AIModel.GEMINI_PRO,
+            AIModel.GEMINI_FLASH_8B,
         ]
         if model not in valid_models:
             raise ValueError(f"Invalid model: {model}")

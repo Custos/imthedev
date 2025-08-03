@@ -2,7 +2,7 @@
 
 ## Executive Summary
 
-**Project**: imthedev - A decoupled terminal UI for SuperClaude project management  
+**Project**: imthedev - A decoupled terminal UI for AI-driven project management  
 **Strategy**: MVP with clean architecture focus  
 **Timeline**: 4-6 weeks for MVP  
 **Core Principle**: Complete separation of business logic from presentation layer
@@ -30,7 +30,7 @@ The application is **currently in a runnable state** with:
 - **Complete Core Layer**: All business logic, domain models, and services implemented
 - **Full Infrastructure**: Database persistence, configuration management, and dependency injection
 - **Stable Foundation**: Event-driven architecture with protocol-based interfaces
-- **AI Integration**: Multi-model support (Claude, OpenAI) with adapter pattern
+- **AI Integration**: Google Gemini models (gemini-2.5-flash, gemini-2.5-pro, gemini-2.5-flash-8b)
 - **Configuration System**: TOML files, environment variables, and validation
 
 ### 🔄 Active Development

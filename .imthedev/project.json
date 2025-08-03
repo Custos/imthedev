@@ -1,0 +1,12 @@
+{
+  "id": "e1464b31-b695-4d0b-8521-52c04eef554d",
+  "name": "Test",
+  "path": "/Users/jfeinblum/code/imthedev",
+  "created_at": "2025-08-03T10:46:45.628669",
+  "settings": {
+    "auto_approve": false,
+    "default_ai_model": "claude",
+    "command_timeout": 300,
+    "environment_vars": {}
+  }
+}
