@@ -84,30 +84,18 @@ class ImTheDevApp(App):
         yield Footer()
 
     def on_mount(self) -> None:
-        """Called when the app is mounted. Initialize with sample data."""
-        # Load projects from disk or initialize with sample
+        """Called when the app is mounted. Load existing projects from disk."""
+        # Load projects from disk
         if self.project_selector:
             # Try to load existing projects
             self.project_selector.load_projects_from_disk()
             
-            # If no projects found, create sample projects
-            if self.project_selector.get_project_count() == 0:
-                self.log("No projects found, creating sample projects...")
-                sample_projects = [
-                    Project.create(
-                        name="Web App Project",
-                        path=Path("~/projects/webapp").expanduser(),
-                    ),
-                    Project.create(
-                        name="API Service",
-                        path=Path("~/projects/api").expanduser(),
-                    ),
-                    Project.create(
-                        name="ML Pipeline",
-                        path=Path("~/projects/ml-pipeline").expanduser(),
-                    ),
-                ]
-                self.project_selector.update_projects(sample_projects)
+            # Log the project count for user awareness
+            project_count = self.project_selector.get_project_count()
+            if project_count == 0:
+                self.log("No projects found. Press 'N' to create a new project.")
+            else:
+                self.log(f"Loaded {project_count} project(s) from disk")
 
         # Set initial focus to project selector
         if self.project_selector:
