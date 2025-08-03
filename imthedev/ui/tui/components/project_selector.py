@@ -524,7 +524,7 @@ class ProjectSelector(Widget):
                 context=ProjectContext(),  # Will be loaded when project is selected
                 settings=ProjectSettings(
                     auto_approve=data["settings"].get("auto_approve", False),
-                    default_ai_model=data["settings"].get("default_ai_model", "claude"),
+                    default_ai_model=data["settings"].get("default_ai_model", "gemini-2.5-flash"),
                     command_timeout=data["settings"].get("command_timeout", 300),
                     environment_vars=data["settings"].get("environment_vars", {}),
                 )

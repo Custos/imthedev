@@ -87,14 +87,14 @@ class ProjectSettings:
     """
 
     auto_approve: bool = False
-    default_ai_model: str = "claude"
+    default_ai_model: str = "gemini-2.5-flash"
     command_timeout: int = 300
     environment_vars: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass
 class Project:
-    """Represents a SuperClaude project managed by imthedev.
+    """Represents an AI-driven project managed by imthedev.
 
     Attributes:
         id: Unique identifier for the project

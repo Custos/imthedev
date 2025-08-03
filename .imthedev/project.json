@@ -5,7 +5,7 @@
   "created_at": "2025-08-03T10:46:45.628669",
   "settings": {
     "auto_approve": false,
-    "default_ai_model": "claude",
+    "default_ai_model": "gemini-2.5-pro",
     "command_timeout": 300,
     "environment_vars": {}
   }

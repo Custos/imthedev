@@ -323,7 +323,7 @@ class StateManagerImpl(StateManager):
             self._state.current_project_id = UUID(project_id) if project_id else None
             self._state.autopilot_enabled = state_data.get("autopilot_enabled", False)
             self._state.selected_ai_model = state_data.get(
-                "selected_ai_model", AIModel.CLAUDE
+                "selected_ai_model", AIModel.GEMINI_FLASH
             )
             self._state.ui_preferences = state_data.get("ui_preferences", {})
 
